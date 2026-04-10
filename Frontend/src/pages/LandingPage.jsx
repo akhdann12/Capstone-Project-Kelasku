@@ -104,6 +104,7 @@ const Navbar = ({ onNavigate }) => {
 };
 
 const Hero = ({ onNavigate }) => {
+    const [showVideoModal, setShowVideoModal] = useState(false);
     return (
         <section id="hero" className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-slate-50">
             {/* Decorative blobs */}
@@ -136,7 +137,7 @@ const Hero = ({ onNavigate }) => {
                         <button onClick={() => onNavigate("login")} className="w-full sm:w-auto px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 hover:scale-105 transition-all shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2">
                             Mulai Belajar Gratis <ArrowRight className="w-5 h-5" />
                         </button>
-                        <button className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                        <button onClick={() => setShowVideoModal(true)} className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                             Lihat Demo Video
                         </button>
                     </div>
@@ -153,7 +154,7 @@ const Hero = ({ onNavigate }) => {
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center border border-white/30 text-white cursor-pointer hover:scale-110 transition-transform">
+                                    <div onClick={() => setShowVideoModal(true)} className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center border border-white/30 text-white cursor-pointer hover:scale-110 transition-transform">
                                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-xl">
                                             <ChevronRight className="w-8 h-8 fill-current" />
                                         </div>
@@ -164,6 +165,29 @@ const Hero = ({ onNavigate }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Modal Coming Soon Video */}
+            {showVideoModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" onClick={() => setShowVideoModal(false)} />
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl p-10 relative z-10 flex flex-col items-center text-center max-w-sm w-full animate-in zoom-in-95 duration-300">
+                        <button onClick={() => setShowVideoModal(false)} className="absolute top-5 right-5 p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-400">
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-5">
+                            <span className="text-4xl">🎬</span>
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-800 mb-2">Coming Soon!</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed">
+                            Video demo KelasKu sedang dalam produksi dan akan segera hadir. Pantau terus ya!
+                        </p>
+                        <button onClick={() => setShowVideoModal(false)}
+                            className="mt-6 w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all">
+                            Oke, Ditunggu!
+                        </button>
+                    </div>
+                </div>
+            )}
         </section>
     );
 };
@@ -388,7 +412,7 @@ const Footer = () => {
                 </div>
 
                 <div className="pt-8 border-t border-slate-800 text-center text-sm">
-                    <p>© {new Date().getFullYear()} KelasKu. All rights reserved. Made with ❤️ for Indonesia.</p>
+                    <p>© {new Date().getFullYear()} KelasKu. All rights reserved.</p>
                 </div>
             </div>
         </footer>

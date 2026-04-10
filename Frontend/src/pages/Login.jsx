@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 const API_URL = import.meta.env.VITE_API_URL;
-export default function Login({ onNavigate }) {
+export default function Login({ onNavigate, successMessage }) {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -61,6 +61,12 @@ export default function Login({ onNavigate }) {
                         <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Selamat Datang Kembali</h1>
                         <p className="text-slate-500">Masuk ke akun KelasKu kamu di sini.</p>
                     </div>
+
+                    {successMessage && (
+                        <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl mb-6 text-sm font-bold flex items-center gap-2 border border-emerald-100">
+                            ✅ {successMessage}
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold flex items-center gap-2 border border-red-100">
