@@ -7,7 +7,7 @@ const supabase = createClient(
     import.meta.env.VITE_SUPABASE_ANON_KEY
 )
 
-export default function ResetPassword({ token, onNavigate }) {
+export default function ResetPassword({ onNavigate }) {
     const [password, setPassword] = useState('')
     const [confirm, setConfirm] = useState('')
     const [showPass, setShowPass] = useState(false)
@@ -15,16 +15,41 @@ export default function ResetPassword({ token, onNavigate }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(false)
+    const [sessionReady, setSessionReady] = useState(false)
 
     useEffect(() => {
-        // Set session dari token yang ada di URL
-        if (token) {
+        // Ambil token langsung dari URL hash
+        const hash = window.location.hash
+        const params = new URLSearchParams(hash.replace('#', ''))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token') || ''
+        const type = params.get('type')
+
+        if (accessToken && type === 'recovery') {
+            // Set session Supabase dari token
             supabase.auth.setSession({
-                access_token: token,
-                refresh_token: '',
+                access_token: accessToken,
+                refresh_token: refreshToken,
+            }).then(({ error }) => {
+                if (error) {
+                    setError('Link reset password tidak valid atau sudah kadaluarsa. Minta link baru.')
+                } else {
+                    setSessionReady(true)
+                    // Bersihkan token dari URL
+                    window.history.replaceState(null, '', window.location.pathname)
+                }
+            })
+        } else {
+            // Coba cek apakah sudah ada session aktif
+            supabase.auth.getSession().then(({ data }) => {
+                if (data?.session) {
+                    setSessionReady(true)
+                } else {
+                    setError('Link tidak valid. Silakan minta link reset password baru.')
+                }
             })
         }
-    }, [token])
+    }, [])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -38,8 +63,7 @@ export default function ResetPassword({ token, onNavigate }) {
             const { error } = await supabase.auth.updateUser({ password })
             if (error) throw error
             setSuccess(true)
-            // Redirect ke login setelah 2 detik
-            setTimeout(() => onNavigate('login'), 2000)
+            setTimeout(() => onNavigate('login'), 2500)
         } catch (err) {
             setError(err.message || 'Gagal reset password, coba lagi')
         } finally {
@@ -63,7 +87,7 @@ export default function ResetPassword({ token, onNavigate }) {
                 {success ? (
                     <div className="flex flex-col items-center gap-4 py-4">
                         <CheckCircle2 className="w-16 h-16 text-emerald-500" />
-                        <p className="font-bold text-emerald-600 text-center">Password berhasil diubah!</p>
+                        <p className="font-bold text-emerald-600 text-center text-lg">Password berhasil diubah!</p>
                         <p className="text-slate-400 text-sm text-center">Mengalihkan ke halaman login...</p>
                     </div>
                 ) : (
@@ -87,7 +111,8 @@ export default function ResetPassword({ token, onNavigate }) {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Minimal 6 karakter"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 text-sm"
+                                    disabled={!sessionReady}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 text-sm disabled:opacity-50"
                                     required
                                 />
                                 <button type="button" onClick={() => setShowPass(!showPass)}
@@ -109,7 +134,8 @@ export default function ResetPassword({ token, onNavigate }) {
                                     value={confirm}
                                     onChange={(e) => setConfirm(e.target.value)}
                                     placeholder="Ulangi password baru"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 text-sm"
+                                    disabled={!sessionReady}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 text-sm disabled:opacity-50"
                                     required
                                 />
                                 <button type="button" onClick={() => setShowConfirm(!showConfirm)}
@@ -119,7 +145,7 @@ export default function ResetPassword({ token, onNavigate }) {
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading}
+                        <button type="submit" disabled={loading || !sessionReady}
                             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
                             {loading
                                 ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Menyimpan...</>
