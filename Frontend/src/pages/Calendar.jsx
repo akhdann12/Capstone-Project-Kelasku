@@ -337,7 +337,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                     </div>
 
                     {/* Calendar Card */}
-                    <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 mb-8">
+                    <div className="bg-white rounded-[24px] sm:rounded-[40px] p-4 sm:p-8 shadow-sm border border-slate-100 mb-8">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
                                 {viewMode === "bulan" ? (
@@ -380,7 +380,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                         {viewMode === "bulan" && (
                             <>
                                 <div className="grid grid-cols-7 gap-y-2">
-                                    {DAYS.map((d) => <div key={d} className="text-center text-[12px] font-black text-slate-400 tracking-widest py-2">{d}</div>)}
+                                {DAYS.map((d) => <div key={d} className="text-center text-[9px] sm:text-[12px] font-black text-slate-400 tracking-tight sm:tracking-widest py-2">{d}</div>)}
                                     {cells.map((cell, idx) => {
                                         const events = getEventsForDate(cell.day, cell.currentMonth);
                                         const today = isToday(cell.day, cell.currentMonth);

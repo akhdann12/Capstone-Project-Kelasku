@@ -1,4 +1,10 @@
 import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -13,6 +19,21 @@ export default function App() {
   const [currentView, setCurrentView] = useState('landing')
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [verifyMessage, setVerifyMessage] = useState(null)
+
+  // Auto-refresh token Supabase setiap 50 menit biar tidak expired
+  useEffect(() => {
+    const refreshToken = async () => {
+      try {
+        const { data } = await supabase.auth.refreshSession()
+        if (data?.session?.access_token) {
+          localStorage.setItem('token', data.session.access_token)
+        }
+      } catch (e) {}
+    }
+    refreshToken() // refresh saat pertama buka app
+    const interval = setInterval(refreshToken, 50 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     // Cek URL path dulu — kalau /reset-password langsung ke sana

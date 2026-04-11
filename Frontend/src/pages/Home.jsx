@@ -419,6 +419,7 @@ export default function Home({ onNavigate, onLogout }) {
     const [notifications, setNotifications] = useState([]);
     const [notifLoading, setNotifLoading] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [doneIds, setDoneIds] = useState(new Set()); // ID materi yang sudah selesai
     const notifRef = useRef(null);
 
@@ -512,7 +513,11 @@ export default function Home({ onNavigate, onLogout }) {
 
     // Klik luar tutup notif
     useEffect(() => {
-        const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false); };
+        const handler = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
+            // Tutup profile menu kalau klik di luar
+            if (!e.target.closest('.profile-menu-container')) setShowProfileMenu(false);
+        };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
@@ -567,19 +572,23 @@ export default function Home({ onNavigate, onLogout }) {
                             </div>
                         )}
                         {/* Profile */}
-                        <div className="relative group shrink-0">
-                            <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
+                        <div className="relative shrink-0 profile-menu-container">
+                            <button
+                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
                                 {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                             </button>
-                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
-                                <div className="px-4 py-3">
-                                    <span className="block font-black text-slate-800 truncate">{user.name}</span>
-                                    <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
+                            {showProfileMenu && (
+                                <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 py-3">
+                                        <span className="block font-black text-slate-800 truncate">{user.name}</span>
+                                        <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
+                                    </div>
+                                    <hr className="my-1 border-slate-50" />
+                                    <button onClick={() => { setIsEditProfileOpen(true); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
+                                    <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
                                 </div>
-                                <hr className="my-1 border-slate-50" />
-                                <button onClick={() => setIsEditProfileOpen(true)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
-                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -597,7 +606,7 @@ export default function Home({ onNavigate, onLogout }) {
             {/* FAB Guru */}
             {isGuru && (
                 <button onClick={() => setIsUploadOpen(true)}
-                    className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 z-50">+</button>
+                    className="fixed bottom-24 sm:bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 z-40">+</button>
             )}
 
             <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} onUploadSuccess={fetchMaterials} />
