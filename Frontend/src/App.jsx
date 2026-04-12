@@ -20,21 +20,6 @@ export default function App() {
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [verifyMessage, setVerifyMessage] = useState(null)
 
-  // Auto-refresh token Supabase setiap 50 menit biar tidak expired
-  useEffect(() => {
-    const refreshToken = async () => {
-      try {
-        const { data } = await supabase.auth.refreshSession()
-        if (data?.session?.access_token) {
-          localStorage.setItem('token', data.session.access_token)
-        }
-      } catch (e) {}
-    }
-    refreshToken() // refresh saat pertama buka app
-    const interval = setInterval(refreshToken, 50 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
-
   useEffect(() => {
     // Cek URL path dulu — kalau /reset-password langsung ke sana
     const path = window.location.pathname
@@ -57,42 +42,44 @@ export default function App() {
       }
     }
 
-    // Cek session Supabase — auto logout kalau expired
+    // Cek session Supabase saat pertama buka app
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         localStorage.setItem('token', session.access_token)
         setCurrentView('home')
       } else {
-        // Tidak ada session — paksa ke landing
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        const token = localStorage.getItem('token')
-        if (token) {
-          // Ada token lama tapi session sudah tidak valid
-          setCurrentView('landing')
-        }
+        setCurrentView('landing')
       }
     }
     checkSession()
   }, [])
 
-  // Listen perubahan auth state (login/logout dari tab lain)
+  // Listen perubahan auth state (login, logout, refresh token, tab lain)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (!session && currentView !== 'landing' && currentView !== 'login' && currentView !== 'register' && currentView !== 'forgot-password' && currentView !== 'reset-password')) {
+      if (event === 'SIGNED_IN' && session) {
+        localStorage.setItem('token', session.access_token)
+        setCurrentView('home')
+      }
+
+      if (event === 'SIGNED_OUT') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         setCurrentView('landing')
       }
+
       if (event === 'TOKEN_REFRESHED' && session) {
         localStorage.setItem('token', session.access_token)
       }
     })
     return () => subscription.unsubscribe()
-  }, [currentView])
+  }, [])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setCurrentView('landing')
