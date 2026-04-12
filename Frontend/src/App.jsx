@@ -20,6 +20,21 @@ export default function App() {
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [verifyMessage, setVerifyMessage] = useState(null)
 
+  // Auto-refresh token Supabase setiap 50 menit biar tidak expired
+  useEffect(() => {
+    const refreshToken = async () => {
+      try {
+        const { data } = await supabase.auth.refreshSession()
+        if (data?.session?.access_token) {
+          localStorage.setItem('token', data.session.access_token)
+        }
+      } catch (e) {}
+    }
+    refreshToken() // refresh saat pertama buka app
+    const interval = setInterval(refreshToken, 50 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     // Cek URL path dulu — kalau /reset-password langsung ke sana
     const path = window.location.pathname
@@ -42,41 +57,9 @@ export default function App() {
       }
     }
 
-    // Satu listener untuk semua auth events — termasuk INITIAL_SESSION saat page load/refresh
-    // Ini menggantikan checkSession agar tidak ada race condition
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') {
-        // Dipanggil sekali saat app pertama load — ada session = sudah login, tidak ada = landing
-        if (session) {
-          localStorage.setItem('token', session.access_token)
-          setCurrentView('home')
-        } else {
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          setCurrentView('landing')
-        }
-        return
-      }
-
-      if (event === 'SIGNED_IN' && session) {
-        localStorage.setItem('token', session.access_token)
-        setCurrentView('home')
-        return
-      }
-
-      if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setCurrentView('landing')
-        return
-      }
-
-      if (event === 'TOKEN_REFRESHED' && session) {
-        localStorage.setItem('token', session.access_token)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    // Cek kalau sudah login
+    const token = localStorage.getItem('token')
+    if (token) setCurrentView('home')
   }, [])
 
   const handleLogout = async () => {
