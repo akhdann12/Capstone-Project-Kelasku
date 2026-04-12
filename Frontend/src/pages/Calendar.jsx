@@ -158,6 +158,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
     const [tip] = useState(TIPS[Math.floor(Math.random() * TIPS.length)]);
     const [viewMode, setViewMode] = useState("bulan"); // bulan | minggu
     const [weekOffset, setWeekOffset] = useState(0); // 0 = minggu ini
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Semua events gabungan
     const allEvents = [
@@ -329,16 +330,21 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                             <svg width="20" height="20" fill="none" stroke="#94a3b8" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
                             <input type="text" placeholder="Cari materi atau tugas..." className="bg-transparent border-none outline-none text-[15px] text-slate-700 w-full placeholder-slate-400" />
                         </div>
-                        <div className="relative group shrink-0">
-                            <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
+                        <div className="relative shrink-0">
+                            <button onClick={() => setIsProfileOpen(prev => !prev)} className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
                                 {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                             </button>
-                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
-                                <div className="px-4 py-3"><span className="block font-black text-slate-800 truncate">{user.name}</span><span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span></div>
-                                <hr className="my-1 border-slate-50" />
-                                <button onClick={() => setIsEditProfileOpen(true)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
-                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
-                            </div>
+                            {isProfileOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)} />
+                                    <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20">
+                                        <div className="px-4 py-3"><span className="block font-black text-slate-800 truncate">{user.name}</span><span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span></div>
+                                        <hr className="my-1 border-slate-50" />
+                                        <button onClick={() => { setIsEditProfileOpen(true); setIsProfileOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
+                                        <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 

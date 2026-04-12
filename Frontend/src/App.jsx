@@ -42,39 +42,40 @@ export default function App() {
       }
     }
 
-    // Cek session Supabase saat pertama buka app
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        localStorage.setItem('token', session.access_token)
-        setCurrentView('home')
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setCurrentView('landing')
-      }
-    }
-    checkSession()
-  }, [])
-
-  // Listen perubahan auth state (login, logout, refresh token, tab lain)
-  useEffect(() => {
+    // Satu listener untuk semua auth events — termasuk INITIAL_SESSION saat page load/refresh
+    // Ini menggantikan checkSession agar tidak ada race condition
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        // Dipanggil sekali saat app pertama load — ada session = sudah login, tidak ada = landing
+        if (session) {
+          localStorage.setItem('token', session.access_token)
+          setCurrentView('home')
+        } else {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setCurrentView('landing')
+        }
+        return
+      }
+
       if (event === 'SIGNED_IN' && session) {
         localStorage.setItem('token', session.access_token)
         setCurrentView('home')
+        return
       }
 
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         setCurrentView('landing')
+        return
       }
 
       if (event === 'TOKEN_REFRESHED' && session) {
         localStorage.setItem('token', session.access_token)
       }
     })
+
     return () => subscription.unsubscribe()
   }, [])
 
