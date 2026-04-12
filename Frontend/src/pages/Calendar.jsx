@@ -149,9 +149,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
     const [currentMonth, setCurrentMonth] = useState(now.getMonth());
     const [currentYear, setCurrentYear] = useState(now.getFullYear());
     const [assignments, setAssignments] = useState([]); // dari backend
-    const [manualEvents, setManualEvents] = useState(() => {
-        try { return JSON.parse(localStorage.getItem("kelasku_manual_events") || "[]"); } catch { return []; }
-    });
+    const [manualEvents, setManualEvents] = useState([]);
     const [user, setUser] = useState({ name: "User", role: "siswa" });
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -199,13 +197,26 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
-        if (storedUser) setUser(JSON.parse(storedUser));
+        if (storedUser) {
+            const u = JSON.parse(storedUser);
+            setUser(u);
+            // Load agenda milik user ini saja — key per user_id
+            try {
+                const key = `kelasku_events_${u.id}`;
+                const saved = JSON.parse(localStorage.getItem(key) || "[]");
+                setManualEvents(saved);
+            } catch { setManualEvents([]); }
+        }
         fetchAssignments();
     }, [fetchAssignments]);
 
+    // Simpan agenda per user
     useEffect(() => {
-        localStorage.setItem("kelasku_manual_events", JSON.stringify(manualEvents));
-    }, [manualEvents]);
+        if (user.id) {
+            const key = `kelasku_events_${user.id}`;
+            localStorage.setItem(key, JSON.stringify(manualEvents));
+        }
+    }, [manualEvents, user.id]);
 
     // Build calendar grid
     const buildCalendar = () => {
@@ -342,7 +353,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                             <div className="flex items-center gap-4">
                                 {viewMode === "bulan" ? (
                                     <>
-                                        <h2 className="text-2xl font-black text-slate-800">{MONTHS[currentMonth]} {currentYear}</h2>
+                                        <h2 className="text-lg sm:text-2xl font-black text-slate-800">{MONTHS[currentMonth]} {currentYear}</h2>
                                         <div className="flex gap-1">
                                             <button onClick={prevMonth} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
                                             <button onClick={nextMonth} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"><ChevronRight className="w-5 h-5" /></button>
@@ -366,12 +377,12 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => { setCurrentMonth(now.getMonth()); setCurrentYear(now.getFullYear()); setWeekOffset(0); }}
-                                    className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-xl transition-all">
+                                    className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-all whitespace-nowrap">
                                     Hari Ini
                                 </button>
-                                <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1">
-                                    <button onClick={() => setViewMode("bulan")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === "bulan" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Bulan</button>
-                                    <button onClick={() => setViewMode("minggu")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === "minggu" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Minggu</button>
+                                <div className="bg-slate-50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl flex gap-0.5 sm:gap-1">
+                                    <button onClick={() => setViewMode("bulan")} className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all ${viewMode === "bulan" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Bulan</button>
+                                    <button onClick={() => setViewMode("minggu")} className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all ${viewMode === "minggu" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Minggu</button>
                                 </div>
                             </div>
                         </div>

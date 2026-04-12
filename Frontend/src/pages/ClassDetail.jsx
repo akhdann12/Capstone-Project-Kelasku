@@ -710,6 +710,8 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
     const [showBuatKuis, setShowBuatKuis] = useState(false);
     const [activeKuis, setActiveKuis] = useState(null);
     const [viewLeaderboard, setViewLeaderboard] = useState(null);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const [submitTugas, setSubmitTugas] = useState(null);
     const [viewSubmissions, setViewSubmissions] = useState(null);
     const [doneIds, setDoneIds] = useState(new Set()); // ID materi selesai — persisten dari DB
@@ -770,6 +772,15 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
     };
 
     const isGuru = user.role === "guru";
+
+    // Tutup profile menu saat klik di luar
+    useEffect(() => {
+        const handler = (e) => {
+            if (!e.target.closest('.profile-menu-cd')) setShowProfileMenu(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     // Hitung tugas yang belum dikumpulkan (untuk notif siswa)
     const tugasBelumSubmit = assignments.filter((a) => !a.submission).length;
@@ -887,7 +898,7 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                         </div>
                         {materials.length > 0 ? (
                             <div className="space-y-4">
-                                {materials.map((m) => {
+                                {materials.filter(m => !searchQuery || m.title?.toLowerCase().includes(searchQuery.toLowerCase())).map((m) => {
                                     const isDone = doneIds.has(m.id);
                                     return (
                                     <div key={m.id} className={`bg-white rounded-2xl shadow-sm border overflow-hidden transition-all ${isDone ? "border-emerald-100" : "border-slate-100"}`}>
@@ -946,7 +957,7 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                         </div>
                         {assignments.length > 0 ? (
                             <div className="space-y-4">
-                                {assignments.map((a) => (
+                                {assignments.filter(a => !searchQuery || a.title?.toLowerCase().includes(searchQuery.toLowerCase())).map((a) => (
                                     <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                         <div className="p-5">
                                         <div className="flex items-start justify-between gap-4">

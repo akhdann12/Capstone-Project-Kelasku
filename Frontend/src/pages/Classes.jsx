@@ -407,6 +407,8 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState({ name: "User", role: "siswa" });
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showBuatKelas, setShowBuatKelas] = useState(false);
     const [showJoinKelas, setShowJoinKelas] = useState(false);
     const [uploadTarget, setUploadTarget] = useState(null); // kelas yang mau diupload materinya
@@ -434,6 +436,15 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
         if (storedUser) setUser(JSON.parse(storedUser));
         fetchClasses();
     }, [fetchClasses]);
+
+    // Tutup profile menu saat klik di luar
+    useEffect(() => {
+        const handler = (e) => {
+            if (!e.target.closest('.profile-menu-cls')) setShowProfileMenu(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const isGuru = user.role === "guru";
 
@@ -480,14 +491,16 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
                         <input
                             type="text"
                             placeholder="Cari kelas..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="bg-transparent border-none outline-none text-[15px] text-slate-700 w-full placeholder-slate-400 font-medium"
                         />
                     </div>
-                    <div className="relative group shrink-0 mr-4">
-                        <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl cursor-pointer hover:bg-blue-200 transition-colors shadow-sm overflow-hidden">
+                    <div className="relative shrink-0 mr-4 profile-menu-cls">
+                        <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl cursor-pointer hover:bg-blue-200 transition-colors shadow-sm overflow-hidden">
                             {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                         </button>
-                        <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
+                        {showProfileMenu && <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20 animate-in fade-in duration-150">
                             <div className="px-4 py-3">
                                 <span className="block text-[15px] font-black text-slate-800 leading-tight truncate">{user.name}</span>
                                 <span className="block text-xs text-slate-400 mt-1 capitalize font-bold">{user.role}</span>
@@ -505,40 +518,44 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
                             >
                                 <LogOut className="w-4 h-4" /> Logout
                             </button>
-                        </div>
+                        </div>}
                     </div>
                 </div>
 
                 {/* Header */}
-                <div className="flex items-start justify-between mb-8">
-                    <div>
-                        <h1 className="text-4xl font-black text-slate-800 mb-2 tracking-tight">
-                            {isGuru ? "Kelas Saya" : "Kelas Saya"}
-                        </h1>
-                        <p className="text-slate-500 font-medium text-[15px]">
-                            {isGuru ? "Kelola kelas dan upload materi untuk siswamu" : "Kelas yang kamu ikuti"}
-                        </p>
+                <div className="mb-8">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                            <h1 className="text-3xl sm:text-4xl font-black text-slate-800 mb-1 tracking-tight">
+                                Kelas Saya
+                            </h1>
+                            <p className="text-slate-500 font-medium text-[15px]">
+                                {isGuru ? "Kelola kelas dan upload materi untuk siswamu" : "Kelas yang kamu ikuti"}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => isGuru ? setShowBuatKelas(true) : setShowJoinKelas(true)}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 shrink-0 whitespace-nowrap"
+                        >
+                            <Plus className="w-5 h-5" />
+                            {isGuru ? "Buat Kelas" : "Join Kelas"}
+                        </button>
                     </div>
-
-                    {/* Tombol aksi utama */}
-                    <button
-                        onClick={() => isGuru ? setShowBuatKelas(true) : setShowJoinKelas(true)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 shrink-0"
-                    >
-                        <Plus className="w-5 h-5" />
-                        {isGuru ? "Buat Kelas" : "Join Kelas"}
-                    </button>
                 </div>
 
                 {/* Konten */}
-                {loading ? (
+                {/* Filter kelas berdasarkan search */}
+                {(() => { const filteredKelas = classes.filter(k =>
+                    k.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    k.subject?.toLowerCase().includes(searchQuery.toLowerCase())
+                ); return loading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     </div>
-                ) : classes.length > 0 ? (
+                ) : filteredKelas.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {isGuru
-                            ? classes.map((k) => (
+                            ? filteredKelas.map((k) => (
                                 <KelasCardGuru
                                     key={k.id}
                                     kelas={k}
@@ -546,7 +563,7 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
                                     onOpen={onOpenClass}
                                 />
                             ))
-                            : classes.map((k) => (
+                            : filteredKelas.map((k) => (
                                 <KelasCardSiswa key={k.id} kelas={k} onOpen={onOpenClass} />
                             ))
                         }
@@ -572,7 +589,7 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
                             {isGuru ? "Buat Kelas Sekarang" : "Join Kelas Sekarang"}
                         </button>
                     </div>
-                )}
+                ); })()}
             </main>
 
             {/* FAB — hanya mobile */}

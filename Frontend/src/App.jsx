@@ -57,10 +57,40 @@ export default function App() {
       }
     }
 
-    // Cek kalau sudah login
-    const token = localStorage.getItem('token')
-    if (token) setCurrentView('home')
+    // Cek session Supabase — auto logout kalau expired
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        localStorage.setItem('token', session.access_token)
+        setCurrentView('home')
+      } else {
+        // Tidak ada session — paksa ke landing
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        const token = localStorage.getItem('token')
+        if (token) {
+          // Ada token lama tapi session sudah tidak valid
+          setCurrentView('landing')
+        }
+      }
+    }
+    checkSession()
   }, [])
+
+  // Listen perubahan auth state (login/logout dari tab lain)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (!session && currentView !== 'landing' && currentView !== 'login' && currentView !== 'register' && currentView !== 'forgot-password' && currentView !== 'reset-password')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setCurrentView('landing')
+      }
+      if (event === 'TOKEN_REFRESHED' && session) {
+        localStorage.setItem('token', session.access_token)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [currentView])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
