@@ -1,10 +1,15 @@
-import { Home, Calendar, BookOpen, LogOut } from "lucide-react";
+import { Home, Calendar, BookOpen, Camera, LogOut } from "lucide-react";
 
 const tabs = [
     {
         id: "home",
         label: "Home",
         icon: <Home className="w-5 h-5" />,
+    },
+    {
+        id: "attendance",
+        label: "Absen",
+        icon: <Camera className="w-5 h-5" />,
     },
     {
         id: "calendar",

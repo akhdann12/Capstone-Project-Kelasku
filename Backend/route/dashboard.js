@@ -142,32 +142,10 @@ router.get("/stats", auth, async (req, res) => {
     }
 });
 
-// =============================================
-// POST update streak login
-// =============================================
-router.post("/streak", auth, async (req, res) => {
-    const userId = req.user.id;
-    const nowWIB = new Date(Date.now() + 7 * 60 * 60 * 1000);
-    const todayWIB = nowWIB.toISOString().split("T")[0];
-
-    const { data: existing } = await supabase
-        .from("user_streaks").select("*").eq("user_id", userId).maybeSingle();
-
-    if (!existing) {
-        await supabase.from("user_streaks").insert({ user_id: userId, streak_count: 1, last_login_date: todayWIB });
-        return res.json({ streak: 1 });
-    }
-
-    if (existing.last_login_date === todayWIB) return res.json({ streak: existing.streak_count });
-
-    const yesterdayWIB = new Date(nowWIB);
-    yesterdayWIB.setDate(yesterdayWIB.getDate() - 1);
-    const yesterdayStr = yesterdayWIB.toISOString().split("T")[0];
-
-    const newStreak = existing.last_login_date === yesterdayStr ? existing.streak_count + 1 : 1;
-    await supabase.from("user_streaks").update({ streak_count: newStreak, last_login_date: todayWIB }).eq("user_id", userId);
-    return res.json({ streak: newStreak });
-});
+// NOTE: endpoint "POST /streak" (naikin streak pas login) udah DIHAPUS.
+// Sekarang streak cuma naik kalau siswa/guru absen (check-in) —
+// lihat route/attendance.js (bumpStreak). GET /stats di bawah ini
+// tetap baca angka streak yang sama dari tabel user_streaks.
 
 // =============================================
 // GET notifikasi siswa

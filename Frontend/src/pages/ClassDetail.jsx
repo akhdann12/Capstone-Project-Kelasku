@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, LogOut, Upload, Plus, X, ArrowLeft, BookOpen, ClipboardList, HelpCircle, Users, Copy, Check, FileText, Video, AlertCircle, CheckCircle2, Clock, Calendar, Star, ExternalLink, Lock } from "lucide-react";
+import { User, LogOut, Upload, Plus, X, ArrowLeft, BookOpen, ClipboardList, HelpCircle, Users, Copy, Check, FileText, Video, AlertCircle, CheckCircle2, Clock, Calendar, Star, ExternalLink, Lock, GraduationCap, Download, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import EditProfileModal from "../components/EditProfileModal";
 import CommentSection from "../components/CommentSection";
 import ModalPilihBuatKuis from "../components/ModalPilihBuatKuis";
@@ -692,6 +692,185 @@ function ModalLeaderboard({ quiz, currentUserId, onClose }) {
 }
 
 // =============================================
+// Tab Nilai — rekap nilai tugas & kuis per kelas (guru only)
+// =============================================
+function NilaiTab({ classId, headers }) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
+    const [openId, setOpenId] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+        setLoading(true);
+        fetch(`${API_URL}/api/classes/${classId}/nilai`, { headers })
+            .then((r) => r.json())
+            .then((d) => { if (active) setData(d); })
+            .catch(() => {})
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [classId]);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const res = await fetch(`${API_URL}/api/classes/${classId}/nilai/export`, { headers });
+            if (!res.ok) throw new Error();
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "rekap-nilai.csv";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch { /* ignore */ }
+        finally { setExporting(false); }
+    };
+
+    const fmtDateTime = (d) => d ? new Date(d).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-";
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("id-ID", { dateStyle: "medium" }) : "-";
+
+    if (loading) {
+        return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
+    }
+
+    const tugas = data?.tugas || [];
+    const kuis = data?.kuis || [];
+    const isEmpty = tugas.length === 0 && kuis.length === 0;
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-xl font-black text-slate-800">Rekap Nilai</h2>
+                    <p className="text-slate-400 text-sm mt-0.5">Nilai semua tugas & kuis di kelas ini, per siswa</p>
+                </div>
+                <button onClick={handleExport} disabled={exporting || isEmpty}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm text-sm">
+                    {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Export CSV
+                </button>
+            </div>
+
+            {isEmpty ? (
+                <div className="bg-white rounded-3xl p-12 flex flex-col items-center text-center border-2 border-slate-100 border-dashed">
+                    <GraduationCap className="w-12 h-12 text-slate-200 mb-4" />
+                    <p className="font-bold text-slate-600">Belum ada nilai</p>
+                    <p className="text-slate-400 text-sm mt-1">Nilai akan muncul setelah ada tugas/kuis dan siswa mengerjakannya.</p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {tugas.length > 0 && (
+                        <div>
+                            <h3 className="text-sm font-black text-orange-600 uppercase tracking-wider mb-3 flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Tugas</h3>
+                            <div className="space-y-3">
+                                {tugas.map((t) => {
+                                    const key = `tugas-${t.id}`;
+                                    const open = openId === key;
+                                    return (
+                                        <div key={key} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                            <button onClick={() => setOpenId(open ? null : key)} className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors">
+                                                <div>
+                                                    <p className="font-bold text-slate-800">{t.title}</p>
+                                                    <p className="text-xs text-slate-400 mt-0.5">Dibuat {fmtDate(t.created_at)} • Maks nilai {t.max_score} • {t.submissions.length} siswa mengumpulkan</p>
+                                                </div>
+                                                {open ? <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />}
+                                            </button>
+                                            {open && (
+                                                <div className="border-t border-slate-100 overflow-x-auto">
+                                                    {t.submissions.length === 0 ? (
+                                                        <p className="text-slate-400 text-sm px-5 py-4">Belum ada siswa yang mengumpulkan.</p>
+                                                    ) : (
+                                                        <table className="w-full text-sm">
+                                                            <thead>
+                                                                <tr className="text-left text-slate-400 text-xs font-bold uppercase tracking-wider bg-slate-50">
+                                                                    <th className="px-5 py-2.5">Siswa</th>
+                                                                    <th className="px-5 py-2.5">Nilai</th>
+                                                                    <th className="px-5 py-2.5">Dikumpulkan</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {t.submissions.map((s) => (
+                                                                    <tr key={s.siswa_id} className="border-t border-slate-50">
+                                                                        <td className="px-5 py-3 font-bold text-slate-700">{s.siswa_name}</td>
+                                                                        <td className="px-5 py-3">
+                                                                            {s.score != null
+                                                                                ? <span className="font-black text-blue-600">{s.score}</span>
+                                                                                : <span className="text-slate-400 font-medium">Belum dinilai</span>}
+                                                                        </td>
+                                                                        <td className="px-5 py-3 text-slate-500">{fmtDateTime(s.submitted_at)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {kuis.length > 0 && (
+                        <div>
+                            <h3 className="text-sm font-black text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-2"><HelpCircle className="w-4 h-4" /> Kuis</h3>
+                            <div className="space-y-3">
+                                {kuis.map((q) => {
+                                    const key = `kuis-${q.id}`;
+                                    const open = openId === key;
+                                    return (
+                                        <div key={key} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                            <button onClick={() => setOpenId(open ? null : key)} className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors">
+                                                <div>
+                                                    <p className="font-bold text-slate-800">{q.title}</p>
+                                                    <p className="text-xs text-slate-400 mt-0.5">Dibuat {fmtDate(q.created_at)} • {q.results.length} siswa mengerjakan</p>
+                                                </div>
+                                                {open ? <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />}
+                                            </button>
+                                            {open && (
+                                                <div className="border-t border-slate-100 overflow-x-auto">
+                                                    {q.results.length === 0 ? (
+                                                        <p className="text-slate-400 text-sm px-5 py-4">Belum ada siswa yang mengerjakan.</p>
+                                                    ) : (
+                                                        <table className="w-full text-sm">
+                                                            <thead>
+                                                                <tr className="text-left text-slate-400 text-xs font-bold uppercase tracking-wider bg-slate-50">
+                                                                    <th className="px-5 py-2.5">Siswa</th>
+                                                                    <th className="px-5 py-2.5">Nilai</th>
+                                                                    <th className="px-5 py-2.5">Benar</th>
+                                                                    <th className="px-5 py-2.5">Dikerjakan</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {q.results.map((r) => (
+                                                                    <tr key={r.siswa_id} className="border-t border-slate-50">
+                                                                        <td className="px-5 py-3 font-bold text-slate-700">{r.siswa_name}</td>
+                                                                        <td className="px-5 py-3 font-black text-blue-600">{r.score}</td>
+                                                                        <td className="px-5 py-3 text-slate-500">{r.correct}/{r.total}</td>
+                                                                        <td className="px-5 py-3 text-slate-500">{fmtDateTime(r.submitted_at)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// =============================================
 export default function ClassDetail({ classId, onBack, onLogout }) {
     const [kelas, setKelas] = useState(null);
     const [members, setMembers] = useState([]);
@@ -710,8 +889,6 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
     const [showBuatKuis, setShowBuatKuis] = useState(false);
     const [activeKuis, setActiveKuis] = useState(null);
     const [viewLeaderboard, setViewLeaderboard] = useState(null);
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
     const [submitTugas, setSubmitTugas] = useState(null);
     const [viewSubmissions, setViewSubmissions] = useState(null);
     const [doneIds, setDoneIds] = useState(new Set()); // ID materi selesai — persisten dari DB
@@ -773,15 +950,6 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
 
     const isGuru = user.role === "guru";
 
-    // Tutup profile menu saat klik di luar
-    useEffect(() => {
-        const handler = (e) => {
-            if (!e.target.closest('.profile-menu-cd')) setShowProfileMenu(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
     // Hitung tugas yang belum dikumpulkan (untuk notif siswa)
     const tugasBelumSubmit = assignments.filter((a) => !a.submission).length;
 
@@ -799,6 +967,7 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
         ? [
             { id: "materi", label: "Materi", icon: <BookOpen className="w-4 h-4" /> },
             { id: "tugas", label: "Tugas", icon: <ClipboardList className="w-4 h-4" />, badge: assignments.length },
+            { id: "nilai", label: "Nilai", icon: <GraduationCap className="w-4 h-4" /> },
             { id: "kuis", label: "Kuis", icon: <HelpCircle className="w-4 h-4" /> },
             { id: "anggota", label: "Anggota", icon: <Users className="w-4 h-4" /> },
         ]
@@ -898,7 +1067,7 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                         </div>
                         {materials.length > 0 ? (
                             <div className="space-y-4">
-                                {materials.filter(m => !searchQuery || m.title?.toLowerCase().includes(searchQuery.toLowerCase())).map((m) => {
+                                {materials.map((m) => {
                                     const isDone = doneIds.has(m.id);
                                     return (
                                     <div key={m.id} className={`bg-white rounded-2xl shadow-sm border overflow-hidden transition-all ${isDone ? "border-emerald-100" : "border-slate-100"}`}>
@@ -957,7 +1126,7 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                         </div>
                         {assignments.length > 0 ? (
                             <div className="space-y-4">
-                                {assignments.filter(a => !searchQuery || a.title?.toLowerCase().includes(searchQuery.toLowerCase())).map((a) => (
+                                {assignments.map((a) => (
                                     <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                         <div className="p-5">
                                         <div className="flex items-start justify-between gap-4">
@@ -1033,6 +1202,11 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                             </div>
                         )}
                     </div>
+                )}
+
+                {/* NILAI (Guru only) — rekap nilai tugas & kuis per kelas */}
+                {activeTab === "nilai" && isGuru && (
+                    <NilaiTab classId={classId} headers={headers} />
                 )}
 
                 {/* KUIS */}

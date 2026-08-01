@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const supabase = require("../db");
 const auth = require("../middleware/auth");
 const role = require("../middleware/role");
+const { sendCsv } = require("../utils/csv");
 
 // =============================================
 // GET semua kelas (guru: punyanya | siswa: yang dia ikuti)
@@ -249,6 +250,181 @@ router.get("/:id/members", auth, role(["guru"]), async (req, res) => {
 
     const members = data.map((d) => ({ ...d.profiles, joined_at: d.joined_at }));
     res.json(members);
+});
+
+// =============================================
+// GET rekap nilai 1 kelas — semua tugas & kuis + nilai tiap siswa
+// (guru only, harus pemilik kelas)
+// =============================================
+router.get("/:id/nilai", auth, role(["guru"]), async (req, res) => {
+    const { id } = req.params;
+
+    const { data: kelas } = await supabase
+        .from("classes")
+        .select("id, name, subject")
+        .eq("id", id)
+        .eq("guru_id", req.user.id)
+        .single();
+
+    if (!kelas) return res.status(403).json({ message: "Bukan kelasmu" });
+
+    try {
+        // ---- Rekap Tugas ----
+        const { data: assignments } = await supabase
+            .from("assignments")
+            .select("id, title, description, deadline, max_score, created_at")
+            .eq("class_id", id)
+            .order("created_at", { ascending: false });
+
+        const assignmentIds = (assignments || []).map((a) => a.id);
+        let submissions = [];
+        if (assignmentIds.length > 0) {
+            const { data } = await supabase
+                .from("assignment_submissions")
+                .select("assignment_id, siswa_id, score, submitted_at, graded_at, profiles!assignment_submissions_siswa_id_fkey (id, name, avatar)")
+                .in("assignment_id", assignmentIds);
+            submissions = data || [];
+        }
+
+        const tugas = (assignments || []).map((a) => ({
+            id: a.id,
+            title: a.title,
+            deadline: a.deadline,
+            max_score: a.max_score,
+            created_at: a.created_at,
+            submissions: submissions
+                .filter((s) => s.assignment_id === a.id)
+                .map((s) => ({
+                    siswa_id: s.siswa_id,
+                    siswa_name: s.profiles?.name || "Siswa",
+                    siswa_avatar: s.profiles?.avatar || null,
+                    score: s.score,
+                    submitted_at: s.submitted_at,
+                    graded_at: s.graded_at,
+                })),
+        }));
+
+        // ---- Rekap Kuis ----
+        const { data: quizzes } = await supabase
+            .from("quizzes")
+            .select("id, title, duration_minutes, created_at")
+            .eq("class_id", id)
+            .order("created_at", { ascending: false });
+
+        const quizIds = (quizzes || []).map((q) => q.id);
+        let quizResults = [];
+        if (quizIds.length > 0) {
+            const { data } = await supabase
+                .from("quiz_results")
+                .select("quiz_id, siswa_id, score, correct, total, submitted_at, profiles!quiz_results_siswa_id_fkey (id, name, avatar)")
+                .in("quiz_id", quizIds);
+            quizResults = data || [];
+        }
+
+        const kuis = (quizzes || []).map((q) => ({
+            id: q.id,
+            title: q.title,
+            created_at: q.created_at,
+            results: quizResults
+                .filter((r) => r.quiz_id === q.id)
+                .map((r) => ({
+                    siswa_id: r.siswa_id,
+                    siswa_name: r.profiles?.name || "Siswa",
+                    siswa_avatar: r.profiles?.avatar || null,
+                    score: r.score,
+                    correct: r.correct,
+                    total: r.total,
+                    submitted_at: r.submitted_at,
+                })),
+        }));
+
+        res.json({ kelas: { id: kelas.id, name: kelas.name, subject: kelas.subject }, tugas, kuis });
+    } catch (err) {
+        console.error("Nilai error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// =============================================
+// GET export rekap nilai 1 kelas ke Excel (.xlsx)
+// (guru only, harus pemilik kelas)
+// =============================================
+router.get("/:id/nilai/export", auth, role(["guru"]), async (req, res) => {
+    const { id } = req.params;
+
+    const { data: kelas } = await supabase
+        .from("classes")
+        .select("id, name, subject")
+        .eq("id", id)
+        .eq("guru_id", req.user.id)
+        .single();
+
+    if (!kelas) return res.status(403).json({ message: "Bukan kelasmu" });
+
+    try {
+        const { data: assignments } = await supabase
+            .from("assignments")
+            .select("id, title, deadline, max_score, created_at")
+            .eq("class_id", id)
+            .order("created_at", { ascending: false });
+
+        const assignmentIds = (assignments || []).map((a) => a.id);
+        let submissions = [];
+        if (assignmentIds.length > 0) {
+            const { data } = await supabase
+                .from("assignment_submissions")
+                .select("assignment_id, siswa_id, score, submitted_at, profiles!assignment_submissions_siswa_id_fkey (name)")
+                .in("assignment_id", assignmentIds);
+            submissions = data || [];
+        }
+
+        const { data: quizzes } = await supabase
+            .from("quizzes")
+            .select("id, title, created_at")
+            .eq("class_id", id)
+            .order("created_at", { ascending: false });
+
+        const quizIds = (quizzes || []).map((q) => q.id);
+        let quizResults = [];
+        if (quizIds.length > 0) {
+            const { data } = await supabase
+                .from("quiz_results")
+                .select("quiz_id, siswa_id, score, correct, total, submitted_at, profiles!quiz_results_siswa_id_fkey (name)")
+                .in("quiz_id", quizIds);
+            quizResults = data || [];
+        }
+
+        const rows = [["Jenis", "Judul", "Dibuat Tanggal", "Nama Siswa", "Nilai", "Dikumpulkan / Dikerjakan"]];
+        const fmtDate = (d) => d ? new Date(d).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) : "-";
+
+        (assignments || []).forEach((a) => {
+            const subs = submissions.filter((s) => s.assignment_id === a.id);
+            if (subs.length === 0) {
+                rows.push(["Tugas", a.title, fmtDate(a.created_at), "-", "-", "-"]);
+            } else {
+                subs.forEach((s) => {
+                    rows.push(["Tugas", a.title, fmtDate(a.created_at), s.profiles?.name || "Siswa", s.score ?? "Belum dinilai", fmtDate(s.submitted_at)]);
+                });
+            }
+        });
+
+        (quizzes || []).forEach((q) => {
+            const res_ = quizResults.filter((r) => r.quiz_id === q.id);
+            if (res_.length === 0) {
+                rows.push(["Kuis", q.title, fmtDate(q.created_at), "-", "-", "-"]);
+            } else {
+                res_.forEach((r) => {
+                    rows.push(["Kuis", q.title, fmtDate(q.created_at), r.profiles?.name || "Siswa", `${r.score} (${r.correct}/${r.total} benar)`, fmtDate(r.submitted_at)]);
+                });
+            }
+        });
+
+        const fileName = `rekap-nilai-${kelas.name.replace(/\s+/g, "_")}.csv`;
+        sendCsv(res, fileName, rows);
+    } catch (err) {
+        console.error("Export nilai error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
 });
 
 module.exports = router;

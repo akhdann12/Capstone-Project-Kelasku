@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { User, LogOut, Bell, X, FileText, Video, Upload, BookOpen, Trophy, Flame, Star, AlertCircle, Clock, Users, ClipboardList, HelpCircle, CheckCircle2, ChevronRight } from "lucide-react";
+import { User, LogOut, Bell, X, FileText, Video, Upload, BookOpen, Trophy, Flame, Star, AlertCircle, Clock, Users, ClipboardList, HelpCircle, CheckCircle2, ChevronRight, Camera } from "lucide-react";
 import UploadModal from "../components/UploadModal";
 import EditProfileModal from "../components/EditProfileModal";
 import BottomNav from "../components/BottomNav";
@@ -8,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const navItems = [
     { label: "Home", id: "home", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" /><path d="M9 22V12h6v10" /></svg> },
+    { label: "Absen", id: "attendance", icon: <Camera className="w-5 h-5" /> },
     { label: "Calendar", id: "calendar", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg> },
     { label: "Classes", id: "classes", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" /><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" /></svg> },
 ];
@@ -184,14 +185,18 @@ function DashboardGuru({ user, stats, materials, loading, onNavigate, onUploadOp
             </div>
 
             {/* Streak Guru */}
-            <div className="bg-white rounded-3xl p-6 sm:px-8 flex items-center justify-between mb-8 shadow-sm border border-slate-100">
+            <div className="bg-white rounded-3xl p-6 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 shadow-sm border border-slate-100 gap-6">
                 <div>
                     <h3 className="font-bold text-slate-800 text-lg mb-1">
-                        {stats.streak >= 3 ? `🔥 ${stats.streak} Hari Beruntun Mengajar!` : "Semangat Mengajar! 💪"}
+                        {stats.streak >= 3 ? `🔥 ${stats.streak} Hari Beruntun Absen!` : "Jangan lupa absen hari ini! 💪"}
                     </h3>
-                    <p className="text-slate-500 text-sm">Konsistensimu menginspirasi para siswamu.</p>
+                    <p className="text-slate-500 text-sm">Streak naik tiap kamu absen • Gak reset pas Sabtu/Minggu</p>
+                    <button onClick={() => onNavigate("attendance")}
+                        className="mt-3 bg-blue-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all">
+                        Absen Sekarang
+                    </button>
                 </div>
-                <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3">
+                <div className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3 shrink-0">
                     <Flame className={`w-6 h-6 ${stats.streak > 0 ? "text-orange-500" : "text-slate-300"}`} />
                     <div>
                         <p className="text-2xl font-black text-orange-600">{stats.streak || 0}</p>
@@ -334,9 +339,13 @@ function DashboardSiswa({ user, stats, materials, loading, onNavigate, doneIds }
             <div className="bg-white rounded-3xl p-6 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 shadow-sm border border-slate-100 gap-6">
                 <div>
                     <h3 className="font-bold text-slate-800 text-lg mb-1">
-                        {stats.streak >= 3 ? `🔥 ${stats.streak} Hari Beruntun!` : "Kamu Hebat Hari Ini! 🎉"}
+                        {stats.streak >= 3 ? `🔥 ${stats.streak} Hari Beruntun!` : "Jangan lupa absen hari ini! 🎉"}
                     </h3>
-                    <p className="text-slate-500 text-sm">Login tiap hari buat jaga streak kamu • Reset tiap 00:00 WIB</p>
+                    <p className="text-slate-500 text-sm">Streak naik tiap kamu absen • Gak reset pas Sabtu/Minggu</p>
+                    <button onClick={() => onNavigate("attendance")}
+                        className="mt-3 bg-blue-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all">
+                        Absen Sekarang
+                    </button>
                 </div>
                 <div className="flex gap-4 w-full sm:w-auto">
                     <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl px-4 sm:px-6 py-3 min-w-[100px] flex-1 sm:flex-none">
@@ -419,7 +428,6 @@ export default function Home({ onNavigate, onLogout }) {
     const [notifications, setNotifications] = useState([]);
     const [notifLoading, setNotifLoading] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [doneIds, setDoneIds] = useState(new Set()); // ID materi yang sudah selesai
     const notifRef = useRef(null);
 
@@ -468,10 +476,6 @@ export default function Home({ onNavigate, onLogout }) {
         } catch {}
     }, []);
 
-    const updateStreak = useCallback(async () => {
-        try { await fetch(`${API_URL}/api/dashboard/streak`, { method: "POST", headers }); } catch {}
-    }, []);
-
     const fetchNotifications = useCallback(async () => {
         setNotifLoading(true);
         try {
@@ -497,7 +501,6 @@ export default function Home({ onNavigate, onLogout }) {
         if (storedUser) setUser(JSON.parse(storedUser));
         fetchMaterials();
         fetchStats();
-        updateStreak();
     }, []);
 
     useEffect(() => {
@@ -513,11 +516,7 @@ export default function Home({ onNavigate, onLogout }) {
 
     // Klik luar tutup notif
     useEffect(() => {
-        const handler = (e) => {
-            if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
-            // Tutup profile menu kalau klik di luar
-            if (!e.target.closest('.profile-menu-container')) setShowProfileMenu(false);
-        };
+        const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false); };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
@@ -572,23 +571,19 @@ export default function Home({ onNavigate, onLogout }) {
                             </div>
                         )}
                         {/* Profile */}
-                        <div className="relative shrink-0 profile-menu-container">
-                            <button
-                                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
+                        <div className="relative group shrink-0">
+                            <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
                                 {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                             </button>
-                            {showProfileMenu && (
-                                <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20 animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="px-4 py-3">
-                                        <span className="block font-black text-slate-800 truncate">{user.name}</span>
-                                        <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
-                                    </div>
-                                    <hr className="my-1 border-slate-50" />
-                                    <button onClick={() => { setIsEditProfileOpen(true); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
-                                    <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
+                                <div className="px-4 py-3">
+                                    <span className="block font-black text-slate-800 truncate">{user.name}</span>
+                                    <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
                                 </div>
-                            )}
+                                <hr className="my-1 border-slate-50" />
+                                <button onClick={() => setIsEditProfileOpen(true)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
+                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -606,7 +601,7 @@ export default function Home({ onNavigate, onLogout }) {
             {/* FAB Guru */}
             {isGuru && (
                 <button onClick={() => setIsUploadOpen(true)}
-                    className="fixed bottom-24 sm:bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 z-40">+</button>
+                    className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 z-50">+</button>
             )}
 
             <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} onUploadSuccess={fetchMaterials} />

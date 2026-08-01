@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, LogOut, ChevronLeft, ChevronRight, Plus, X, Clock, Calendar as CalendarIcon, AlertCircle, CheckCircle2 } from "lucide-react";
+import { User, LogOut, ChevronLeft, ChevronRight, Plus, X, Clock, Calendar as CalendarIcon, AlertCircle, CheckCircle2, Camera } from "lucide-react";
 import EditProfileModal from "../components/EditProfileModal";
 import BottomNav from "../components/BottomNav";
 
@@ -34,6 +34,7 @@ const formatTimeOnly = (isoDate) => {
 
 const navItems = [
     { label: "Home", id: "home", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" /><path d="M9 22V12h6v10" /></svg> },
+    { label: "Absen", id: "attendance", icon: <Camera className="w-5 h-5" /> },
     { label: "Calendar", id: "calendar", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg> },
     { label: "Classes", id: "classes", icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" /><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" /></svg> },
 ];
@@ -149,7 +150,9 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
     const [currentMonth, setCurrentMonth] = useState(now.getMonth());
     const [currentYear, setCurrentYear] = useState(now.getFullYear());
     const [assignments, setAssignments] = useState([]); // dari backend
-    const [manualEvents, setManualEvents] = useState([]);
+    const [manualEvents, setManualEvents] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("kelasku_manual_events") || "[]"); } catch { return []; }
+    });
     const [user, setUser] = useState({ name: "User", role: "siswa" });
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -158,7 +161,6 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
     const [tip] = useState(TIPS[Math.floor(Math.random() * TIPS.length)]);
     const [viewMode, setViewMode] = useState("bulan"); // bulan | minggu
     const [weekOffset, setWeekOffset] = useState(0); // 0 = minggu ini
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Semua events gabungan
     const allEvents = [
@@ -198,26 +200,13 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            const u = JSON.parse(storedUser);
-            setUser(u);
-            // Load agenda milik user ini saja — key per user_id
-            try {
-                const key = `kelasku_events_${u.id}`;
-                const saved = JSON.parse(localStorage.getItem(key) || "[]");
-                setManualEvents(saved);
-            } catch { setManualEvents([]); }
-        }
+        if (storedUser) setUser(JSON.parse(storedUser));
         fetchAssignments();
     }, [fetchAssignments]);
 
-    // Simpan agenda per user
     useEffect(() => {
-        if (user.id) {
-            const key = `kelasku_events_${user.id}`;
-            localStorage.setItem(key, JSON.stringify(manualEvents));
-        }
-    }, [manualEvents, user.id]);
+        localStorage.setItem("kelasku_manual_events", JSON.stringify(manualEvents));
+    }, [manualEvents]);
 
     // Build calendar grid
     const buildCalendar = () => {
@@ -330,21 +319,16 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                             <svg width="20" height="20" fill="none" stroke="#94a3b8" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
                             <input type="text" placeholder="Cari materi atau tugas..." className="bg-transparent border-none outline-none text-[15px] text-slate-700 w-full placeholder-slate-400" />
                         </div>
-                        <div className="relative shrink-0">
-                            <button onClick={() => setIsProfileOpen(prev => !prev)} className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
+                        <div className="relative group shrink-0">
+                            <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
                                 {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                             </button>
-                            {isProfileOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)} />
-                                    <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20">
-                                        <div className="px-4 py-3"><span className="block font-black text-slate-800 truncate">{user.name}</span><span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span></div>
-                                        <hr className="my-1 border-slate-50" />
-                                        <button onClick={() => { setIsEditProfileOpen(true); setIsProfileOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
-                                        <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
-                                    </div>
-                                </>
-                            )}
+                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
+                                <div className="px-4 py-3"><span className="block font-black text-slate-800 truncate">{user.name}</span><span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span></div>
+                                <hr className="my-1 border-slate-50" />
+                                <button onClick={() => setIsEditProfileOpen(true)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
+                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                            </div>
                         </div>
                     </div>
 
@@ -354,12 +338,12 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                     </div>
 
                     {/* Calendar Card */}
-                    <div className="bg-white rounded-[24px] sm:rounded-[40px] p-4 sm:p-8 shadow-sm border border-slate-100 mb-8">
+                    <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100 mb-8">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
                                 {viewMode === "bulan" ? (
                                     <>
-                                        <h2 className="text-lg sm:text-2xl font-black text-slate-800">{MONTHS[currentMonth]} {currentYear}</h2>
+                                        <h2 className="text-2xl font-black text-slate-800">{MONTHS[currentMonth]} {currentYear}</h2>
                                         <div className="flex gap-1">
                                             <button onClick={prevMonth} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
                                             <button onClick={nextMonth} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"><ChevronRight className="w-5 h-5" /></button>
@@ -383,12 +367,12 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => { setCurrentMonth(now.getMonth()); setCurrentYear(now.getFullYear()); setWeekOffset(0); }}
-                                    className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-all whitespace-nowrap">
+                                    className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-xl transition-all">
                                     Hari Ini
                                 </button>
-                                <div className="bg-slate-50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl flex gap-0.5 sm:gap-1">
-                                    <button onClick={() => setViewMode("bulan")} className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all ${viewMode === "bulan" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Bulan</button>
-                                    <button onClick={() => setViewMode("minggu")} className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all ${viewMode === "minggu" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Minggu</button>
+                                <div className="bg-slate-50 p-1.5 rounded-2xl flex gap-1">
+                                    <button onClick={() => setViewMode("bulan")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === "bulan" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Bulan</button>
+                                    <button onClick={() => setViewMode("minggu")} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === "minggu" ? "bg-white shadow-sm text-blue-600 border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}>Minggu</button>
                                 </div>
                             </div>
                         </div>
@@ -397,7 +381,7 @@ export default function CalendarPage({ onBack, onNavigate, onLogout }) {
                         {viewMode === "bulan" && (
                             <>
                                 <div className="grid grid-cols-7 gap-y-2">
-                                {DAYS.map((d) => <div key={d} className="text-center text-[9px] sm:text-[12px] font-black text-slate-400 tracking-tight sm:tracking-widest py-2">{d}</div>)}
+                                    {DAYS.map((d) => <div key={d} className="text-center text-[12px] font-black text-slate-400 tracking-widest py-2">{d}</div>)}
                                     {cells.map((cell, idx) => {
                                         const events = getEventsForDate(cell.day, cell.currentMonth);
                                         const today = isToday(cell.day, cell.currentMonth);

@@ -4,22 +4,8 @@ require("dotenv").config();
 
 const app = express();
 
-// Allowed origins — support multiple URLs
-const allowedOrigins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, etc)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        // Allow all vercel.app subdomains untuk safety
-        if (origin.endsWith(".vercel.app")) return callback(null, true);
-        return callback(new Error("Not allowed by CORS"));
-    },
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
 }));
 app.use(express.json());
@@ -33,6 +19,7 @@ app.use("/api/quizzes",     require("./route/quizzes"));
 app.use("/api/comments",    require("./route/comments"));
 app.use("/api/dashboard",          require("./route/dashboard"));
 app.use("/api/personal-materials", require("./route/personal-materials"));
+app.use("/api/attendance",         require("./route/attendance"));
 
 app.get("/", (req, res) => {
     res.json({ message: "Server KelasKu berjalan!" });

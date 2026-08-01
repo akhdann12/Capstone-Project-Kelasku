@@ -169,7 +169,7 @@ function StepAI({ classId, onBack, onClose, onSuccess }) {
 
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm font-bold flex items-center gap-2 border border-red-100"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
 
-            {!preview ? (
+            {!preview ? ( 
                 <div className="space-y-4">
                     <div className="space-y-1">
                         <label className="text-sm font-bold text-slate-700">Topik Kuis *</label>
