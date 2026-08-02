@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User, LogOut, Plus, X, Copy, Check, Upload, BookOpen, Camera } from "lucide-react";
 import EditProfileModal from "../components/EditProfileModal";
 import BottomNav from "../components/BottomNav";
@@ -411,6 +411,17 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState({ name: "User", role: "siswa" });
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const profileMenuRef = useRef(null);
+    useEffect(() => {
+        const handler = (e) => { if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setShowProfileMenu(false); };
+        document.addEventListener("mousedown", handler);
+        document.addEventListener("touchstart", handler);
+        return () => {
+            document.removeEventListener("mousedown", handler);
+            document.removeEventListener("touchstart", handler);
+        };
+    }, []);
     const [showBuatKelas, setShowBuatKelas] = useState(false);
     const [showJoinKelas, setShowJoinKelas] = useState(false);
     const [uploadTarget, setUploadTarget] = useState(null); // kelas yang mau diupload materinya
@@ -487,29 +498,32 @@ export default function ClassesPage({ onNavigate, onLogout, onOpenClass }) {
                             className="bg-transparent border-none outline-none text-[15px] text-slate-700 w-full placeholder-slate-400 font-medium"
                         />
                     </div>
-                    <div className="relative group shrink-0 mr-4">
-                        <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl cursor-pointer hover:bg-blue-200 transition-colors shadow-sm overflow-hidden">
+                    <div className="relative shrink-0 mr-4" ref={profileMenuRef}>
+                        <button onClick={() => setShowProfileMenu((v) => !v)}
+                            className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl cursor-pointer hover:bg-blue-200 transition-colors shadow-sm overflow-hidden">
                             {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                         </button>
-                        <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
-                            <div className="px-4 py-3">
-                                <span className="block text-[15px] font-black text-slate-800 leading-tight truncate">{user.name}</span>
-                                <span className="block text-xs text-slate-400 mt-1 capitalize font-bold">{user.role}</span>
+                        {showProfileMenu && (
+                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20">
+                                <div className="px-4 py-3">
+                                    <span className="block text-[15px] font-black text-slate-800 leading-tight truncate">{user.name}</span>
+                                    <span className="block text-xs text-slate-400 mt-1 capitalize font-bold">{user.role}</span>
+                                </div>
+                                <hr className="my-1 border-slate-50" />
+                                <button
+                                    onClick={() => { setIsEditProfileOpen(true); setShowProfileMenu(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <User className="w-4 h-4 text-slate-400" /> Edit Profil
+                                </button>
+                                <button
+                                    onClick={onLogout}
+                                    className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+                                >
+                                    <LogOut className="w-4 h-4" /> Logout
+                                </button>
                             </div>
-                            <hr className="my-1 border-slate-50" />
-                            <button
-                                onClick={() => setIsEditProfileOpen(true)}
-                                className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-colors flex items-center gap-2"
-                            >
-                                <User className="w-4 h-4 text-slate-400" /> Edit Profil
-                            </button>
-                            <button
-                                onClick={onLogout}
-                                className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
-                            >
-                                <LogOut className="w-4 h-4" /> Logout
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </div>
 
