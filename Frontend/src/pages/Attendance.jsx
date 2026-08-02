@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import * as faceapi from "@vladmandic/face-api";
 import BottomNav from "../components/BottomNav";
+import EditProfileModal from "../components/EditProfileModal";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const MODEL_URL = "/models";
@@ -291,9 +292,28 @@ export default function Attendance({ onBack, onLogout, onNavigate }) {
     const [cameraMode, setCameraMode] = useState(null); // "checkin" | "checkout" | null
     const [toast, setToast] = useState(null);
     const [exporting, setExporting] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+    const profileMenuRef = useRef(null);
 
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
+
+    // Tutup dropdown profile kalau user klik di luar area-nya —
+    // dipakai klik (bukan hover) biar jalan juga di HP/layar sentuh
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+                setShowProfileMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
+        };
+    }, []);
 
     const fetchAll = useCallback(async () => {
         try {
@@ -387,8 +407,28 @@ export default function Attendance({ onBack, onLogout, onNavigate }) {
                                 <p className="text-xs text-slate-400 font-medium truncate">Check-in & check-out harian pakai verifikasi wajah</p>
                             </div>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center overflow-hidden shrink-0">
-                            {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-blue-500" />}
+                        <div className="relative shrink-0" ref={profileMenuRef}>
+                            <button onClick={() => setShowProfileMenu((v) => !v)}
+                                className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors">
+                                {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-blue-500" />}
+                            </button>
+                            {showProfileMenu && (
+                                <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[190px] z-30">
+                                    <div className="px-4 py-3">
+                                        <span className="block font-black text-slate-800 truncate">{user.name}</span>
+                                        <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
+                                    </div>
+                                    <hr className="my-1 border-slate-50" />
+                                    <button onClick={() => { setIsEditProfileOpen(true); setShowProfileMenu(false); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2">
+                                        <UserIcon className="w-4 h-4" />Edit Profil
+                                    </button>
+                                    <button onClick={onLogout}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2">
+                                        <LogOutIcon className="w-4 h-4" />Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -519,6 +559,8 @@ export default function Attendance({ onBack, onLogout, onNavigate }) {
             )}
 
             {/* Bottom Nav Mobile */}
+            <EditProfileModal isOpen={isEditProfileOpen} onClose={() => setIsEditProfileOpen(false)} onUpdateSuccess={(u) => setUser(u)} />
+
             <BottomNav active="attendance" onNavigate={onNavigate} onLogout={onLogout} />
         </div>
     );

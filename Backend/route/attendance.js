@@ -4,7 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const supabase = require("../db");
 const auth = require("../middleware/auth");
-const { getNowWIB, toDateStr, getPreviousSchoolDayWIB } = require("../utils/date");
+const { getNowWIB, toDateStr } = require("../utils/date");
 const { toCsv, sendCsv } = require("../utils/csv");
 
 // Ambang batas jarak wajah (euclidean distance) dari face-api.js.
@@ -43,8 +43,27 @@ async function uploadPhoto(file, prefix, userId) {
     return data.publicUrl;
 }
 
-// Helper: naikkan streak. Ga reset kalau hari sekolah terakhir absen
-// itu = hari sekolah sebelum hari ini (loncatin Sabtu/Minggu otomatis).
+// Helper: cek apakah streak masih nyambung — true kalau semua hari DI ANTARA
+// lastDateStr dan todayStr (gak termasuk keduanya, mundur dari hari ini)
+// isinya weekend doang. Ini beda sama versi lama yang cuma bandingin
+// "kemarin = 1 hari sekolah sebelum hari ini" — versi lama itu keliru kalau
+// absen terakhirnya kebetulan jatuh pas Sabtu/Minggu (misal absen Sabtu,
+// besoknya Minggu absen lagi — itu seharusnya tetap nyambung).
+function isStreakContinuous(lastDateStr, todayStr) {
+    if (lastDateStr === todayStr) return true;
+    const cursor = new Date(todayStr + "T00:00:00Z");
+    for (let i = 0; i < 8; i++) { // batas aman 8 hari mundur, cukup buat 1 long-weekend
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+        const cursorStr = cursor.toISOString().split("T")[0];
+        if (cursorStr === lastDateStr) return true;
+        const day = cursor.getUTCDay();
+        if (day !== 0 && day !== 6) return false; // ketemu hari kerja yang bukan lastDateStr = ada bolong beneran
+    }
+    return false;
+}
+
+// Helper: naikkan streak. Ga reset kalau di antara absen terakhir sampai
+// hari ini isinya Sabtu/Minggu doang (lihat isStreakContinuous di atas).
 async function bumpStreak(userId) {
     const nowWIB = getNowWIB();
     const todayStr = toDateStr(nowWIB);
@@ -59,8 +78,7 @@ async function bumpStreak(userId) {
 
     if (existing.last_login_date === todayStr) return existing.streak_count;
 
-    const prevSchoolDay = getPreviousSchoolDayWIB(nowWIB);
-    const newStreak = existing.last_login_date === prevSchoolDay ? existing.streak_count + 1 : 1;
+    const newStreak = isStreakContinuous(existing.last_login_date, todayStr) ? existing.streak_count + 1 : 1;
 
     await supabase.from("user_streaks").update({ streak_count: newStreak, last_login_date: todayStr }).eq("user_id", userId);
     return newStreak;
