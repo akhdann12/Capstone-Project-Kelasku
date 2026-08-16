@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, LogOut, Upload, Plus, X, ArrowLeft, BookOpen, ClipboardList, HelpCircle, Users, Copy, Check, FileText, Video, AlertCircle, CheckCircle2, Clock, Calendar, Star, ExternalLink, Lock, GraduationCap, Download, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { User, LogOut, Upload, Plus, X, ArrowLeft, BookOpen, ClipboardList, HelpCircle, Users, Copy, Check, FileText, Video, AlertCircle, CheckCircle2, Clock, Calendar, Star, ExternalLink, Lock, GraduationCap, Download, Loader2, ChevronDown, ChevronUp, ChevronRight, Pencil, Trash2, Image as ImageIcon, Presentation } from "lucide-react";
 import EditProfileModal from "../components/EditProfileModal";
 import CommentSection from "../components/CommentSection";
 import ModalPilihBuatKuis from "../components/ModalPilihBuatKuis";
@@ -10,12 +10,13 @@ const API_URL = import.meta.env.VITE_API_URL;
 // =============================================
 // Modal Upload Materi
 // =============================================
-function ModalUploadMateri({ classId, onClose, onSuccess }) {
+function ModalUploadMateri({ classId, editing, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [file, setFile] = useState(null);
     const [dragActive, setDragActive] = useState(false);
+    const isEdit = !!editing;
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -31,8 +32,8 @@ function ModalUploadMateri({ classId, onClose, onSuccess }) {
         formData.append("class_id", classId);
         if (file) formData.set("file", file);
         try {
-            const res = await fetch(`${API_URL}/api/materials`, {
-                method: "POST",
+            const res = await fetch(`${API_URL}/api/materials${isEdit ? `/${editing.id}` : ""}`, {
+                method: isEdit ? "PUT" : "POST",
                 headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
                 body: formData,
             });
@@ -50,48 +51,41 @@ function ModalUploadMateri({ classId, onClose, onSuccess }) {
             <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl relative z-10 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
                 <div className="p-8">
                     <div className="flex justify-between items-start mb-6">
-                        <div><h2 className="text-2xl font-black text-slate-800 mb-1">Upload Materi</h2><p className="text-slate-500 text-sm">Bagikan materi baru ke siswamu</p></div>
+                        <div><h2 className="text-2xl font-black text-slate-800 mb-1">{isEdit ? "Edit Materi" : "Upload Materi"}</h2><p className="text-slate-500 text-sm">{isEdit ? "Perbarui materi yang sudah ada" : "Bagikan materi baru ke siswamu"}</p></div>
                         <button onClick={onClose} className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600"><X /></button>
                     </div>
                     {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-red-100"><AlertCircle className="w-5 h-5 shrink-0" />{error}</div>}
-                    {success && <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-emerald-100"><CheckCircle2 className="w-5 h-5 shrink-0" />Materi berhasil diupload!</div>}
+                    {success && <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-emerald-100"><CheckCircle2 className="w-5 h-5 shrink-0" />{isEdit ? "Materi berhasil diperbarui!" : "Materi berhasil diupload!"}</div>}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-sm font-bold text-slate-700">Judul Materi</label>
-                            <input type="text" name="title" placeholder="Contoh: Bab 1 - Pengenalan" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required />
+                            <input type="text" name="title" defaultValue={editing?.title} placeholder="Contoh: Bab 1 - Pengenalan" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-sm font-bold text-slate-700">Tipe</label>
-                                <select name="type" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800">
-                                    <option value="pdf">📄 PDF</option>
-                                    <option value="video">🎥 Video</option>
-                                    <option value="doc">📝 Dokumen</option>
-                                    <option value="pptx">📊 Presentasi</option>
-                                    <option value="image">🖼️ Gambar</option>
-                                </select>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-bold text-slate-700">Urutan</label>
-                                <input type="number" name="order" defaultValue={1} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" />
-                            </div>
+                        <div className="space-y-1 max-w-[140px]">
+                            <label className="text-sm font-bold text-slate-700">Urutan</label>
+                            <input type="number" name="order" defaultValue={editing?.order ?? 1} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-bold text-slate-700">Deskripsi <span className="text-slate-400 font-normal">(opsional)</span></label>
-                            <textarea name="description" rows={2} placeholder="Deskripsi singkat..." className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 resize-none" />
+                            <textarea name="description" defaultValue={editing?.description} rows={2} placeholder="Deskripsi singkat..." className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 resize-none" />
                         </div>
-                        <div className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${dragActive ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"}`}
-                            onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag}
-                            onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }}
-                            onClick={() => document.getElementById("materi-file-input").click()}>
-                            <input id="materi-file-input" type="file" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
-                            {file ? (
-                                <div><p className="font-bold text-slate-800 text-sm">{file.name}</p><p className="text-xs text-slate-400 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                    <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="mt-2 text-xs text-red-500 font-bold hover:underline">Hapus</button></div>
-                            ) : (<><Upload className="w-8 h-8 text-slate-300 mb-2" /><p className="text-sm font-bold text-slate-500">Klik atau seret file ke sini</p><p className="text-xs text-slate-400">PDF, Video, Word, PPTX, Gambar (maks 10MB)</p></>)}
+                        <div className="space-y-1">
+                            <label className="text-sm font-bold text-slate-700">File Materi {isEdit && <span className="text-slate-400 font-normal">(kosongkan kalau gak mau ganti file)</span>}</label>
+                            <div className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${dragActive ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"}`}
+                                onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag}
+                                onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }}
+                                onClick={() => document.getElementById("materi-file-input").click()}>
+                                <input id="materi-file-input" type="file" className="hidden" onChange={(e) => setFile(e.target.files[0])} />
+                                {file ? (
+                                    <div><p className="font-bold text-slate-800 text-sm">{file.name}</p><p className="text-xs text-slate-400 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="mt-2 text-xs text-red-500 font-bold hover:underline">Hapus</button></div>
+                                ) : isEdit && editing?.file_url ? (
+                                    <div><FileText className="w-8 h-8 text-slate-300 mb-2 mx-auto" /><p className="text-sm font-bold text-slate-500">File saat ini tersimpan</p><p className="text-xs text-slate-400">Klik atau seret file baru buat ganti</p></div>
+                                ) : (<><Upload className="w-8 h-8 text-slate-300 mb-2" /><p className="text-sm font-bold text-slate-500">Klik atau seret file ke sini</p><p className="text-xs text-slate-400">PDF, Video, Word, PPTX, Gambar (maks 10MB) — tipe file otomatis terdeteksi</p></>)}
+                            </div>
                         </div>
                         <button type="submit" disabled={loading || success} className={`w-full py-3.5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 ${(loading || success) ? "opacity-50 cursor-not-allowed" : ""}`}>
-                            {loading ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />Mengupload...</> : success ? "Berhasil!" : <><Upload className="w-4 h-4" />Upload Materi</>}
+                            {loading ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />{isEdit ? "Menyimpan..." : "Mengupload..."}</> : success ? "Berhasil!" : <><Upload className="w-4 h-4" />{isEdit ? "Simpan Perubahan" : "Upload Materi"}</>}
                         </button>
                     </form>
                 </div>
@@ -103,10 +97,19 @@ function ModalUploadMateri({ classId, onClose, onSuccess }) {
 // =============================================
 // Modal Buat Tugas
 // =============================================
-function ModalBuatTugas({ classId, onClose, onSuccess }) {
+function ModalBuatTugas({ classId, editing, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const isEdit = !!editing;
+
+    // Buat prefill input datetime-local, perlu format "YYYY-MM-DDTHH:mm"
+    const toLocalInputValue = (iso) => {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -114,8 +117,8 @@ function ModalBuatTugas({ classId, onClose, onSuccess }) {
         setError(null);
         const formData = new FormData(e.target);
         try {
-            const res = await fetch(`${API_URL}/api/assignments`, {
-                method: "POST",
+            const res = await fetch(`${API_URL}/api/assignments${isEdit ? `/${editing.id}` : ""}`, {
+                method: isEdit ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
                 body: JSON.stringify({ class_id: classId, title: formData.get("title"), description: formData.get("description"), deadline: formData.get("deadline"), max_score: parseInt(formData.get("max_score")) || 100 }),
             });
@@ -133,26 +136,58 @@ function ModalBuatTugas({ classId, onClose, onSuccess }) {
             <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
                 <div className="p-8">
                     <div className="flex justify-between items-start mb-6">
-                        <div><h2 className="text-2xl font-black text-slate-800 mb-1">Buat Tugas</h2><p className="text-slate-500 text-sm">Beri tugas untuk siswamu</p></div>
+                        <div><h2 className="text-2xl font-black text-slate-800 mb-1">{isEdit ? "Edit Tugas" : "Buat Tugas"}</h2><p className="text-slate-500 text-sm">{isEdit ? "Perbarui detail tugas" : "Beri tugas untuk siswamu"}</p></div>
                         <button onClick={onClose} className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600"><X /></button>
                     </div>
                     {error && <div className="bg-red-50 text-red-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-red-100"><AlertCircle className="w-5 h-5 shrink-0" />{error}</div>}
-                    {success && <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-emerald-100"><CheckCircle2 className="w-5 h-5 shrink-0" />Tugas berhasil dibuat!</div>}
+                    {success && <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl mb-4 text-sm font-bold flex items-center gap-3 border border-emerald-100"><CheckCircle2 className="w-5 h-5 shrink-0" />{isEdit ? "Tugas berhasil diperbarui!" : "Tugas berhasil dibuat!"}</div>}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1"><label className="text-sm font-bold text-slate-700">Judul Tugas</label>
-                            <input type="text" name="title" placeholder="Contoh: Latihan Soal Bab 1" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required /></div>
+                            <input type="text" name="title" defaultValue={editing?.title} placeholder="Contoh: Latihan Soal Bab 1" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required /></div>
                         <div className="space-y-1"><label className="text-sm font-bold text-slate-700">Deskripsi / Instruksi</label>
-                            <textarea name="description" rows={3} placeholder="Jelaskan instruksi tugas di sini..." className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 resize-none" required /></div>
+                            <textarea name="description" defaultValue={editing?.description} rows={3} placeholder="Jelaskan instruksi tugas di sini..." className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 resize-none" required /></div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1"><label className="text-sm font-bold text-slate-700">Deadline</label>
-                                <input type="datetime-local" name="deadline" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required /></div>
+                                <input type="datetime-local" name="deadline" defaultValue={toLocalInputValue(editing?.deadline)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" required /></div>
                             <div className="space-y-1"><label className="text-sm font-bold text-slate-700">Nilai Maks</label>
-                                <input type="number" name="max_score" defaultValue={100} min={1} max={1000} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" /></div>
+                                <input type="number" name="max_score" defaultValue={editing?.max_score ?? 100} min={1} max={1000} className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800" /></div>
                         </div>
                         <button type="submit" disabled={loading || success} className={`w-full py-3.5 bg-orange-500 text-white rounded-2xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 ${(loading || success) ? "opacity-50 cursor-not-allowed" : ""}`}>
-                            {loading ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />Membuat...</> : success ? "Berhasil!" : <><ClipboardList className="w-4 h-4" />Buat Tugas</>}
+                            {loading ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />{isEdit ? "Menyimpan..." : "Membuat..."}</> : success ? "Berhasil!" : <><ClipboardList className="w-4 h-4" />{isEdit ? "Simpan Perubahan" : "Buat Tugas"}</>}
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// =============================================
+// Modal konfirmasi hapus (dipakai buat materi & tugas)
+// =============================================
+function ConfirmDeleteModal({ target, onCancel, onConfirm, loading, error }) {
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel} />
+            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 p-6 text-center animate-in zoom-in-95 duration-200">
+                <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-7 h-7 text-red-500" />
+                </div>
+                <h3 className="font-black text-slate-800 text-lg mb-1">
+                    Hapus {target.type === "materi" ? "materi" : "tugas"} ini?
+                </h3>
+                <p className="text-slate-500 text-sm mb-1">
+                    "<span className="font-bold text-slate-700">{target.title}</span>"
+                </p>
+                <p className="text-slate-400 text-xs mb-6">
+                    {target.type === "tugas" ? "Semua nilai & pengumpulan siswa buat tugas ini juga bakal ikut terhapus." : "Tindakan ini gak bisa dibatalin."}
+                </p>
+                {error && <div className="bg-red-50 text-red-600 text-xs font-bold px-3 py-2 rounded-xl mb-4">{error}</div>}
+                <div className="flex gap-3">
+                    <button onClick={onCancel} disabled={loading} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 disabled:opacity-50">Batal</button>
+                    <button onClick={onConfirm} disabled={loading} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                        {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Ya, Hapus"}
+                    </button>
                 </div>
             </div>
         </div>
@@ -871,7 +906,7 @@ function NilaiTab({ classId, headers }) {
 }
 
 // =============================================
-export default function ClassDetail({ classId, onBack, onLogout }) {
+export default function ClassDetail({ classId, onBack, onLogout, onOpenStudent }) {
     const [kelas, setKelas] = useState(null);
     const [members, setMembers] = useState([]);
     const [materials, setMaterials] = useState([]);
@@ -885,13 +920,18 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
 
     // Modals
     const [showUploadMateri, setShowUploadMateri] = useState(false);
+    const [editingMateri, setEditingMateri] = useState(null);
     const [showBuatTugas, setShowBuatTugas] = useState(false);
+    const [editingTugas, setEditingTugas] = useState(null);
     const [showBuatKuis, setShowBuatKuis] = useState(false);
     const [activeKuis, setActiveKuis] = useState(null);
     const [viewLeaderboard, setViewLeaderboard] = useState(null);
     const [submitTugas, setSubmitTugas] = useState(null);
     const [viewSubmissions, setViewSubmissions] = useState(null);
     const [doneIds, setDoneIds] = useState(new Set()); // ID materi selesai — persisten dari DB
+    const [deleteTarget, setDeleteTarget] = useState(null); // { type: "materi"|"tugas", id, title }
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState(null);
 
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
@@ -912,6 +952,27 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }, [classId]);
+
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            const endpoint = deleteTarget.type === "materi" ? "materials" : "assignments";
+            const res = await fetch(`${API_URL}/api/${endpoint}/${deleteTarget.id}`, {
+                method: "DELETE",
+                headers,
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message);
+            setDeleteTarget(null);
+            fetchAll();
+        } catch (e) {
+            setDeleteError(e.message);
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     const fetchMembers = useCallback(async () => {
         const res = await fetch(`${API_URL}/api/classes/${classId}/members`, { headers });
@@ -1071,22 +1132,42 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                                     const isDone = doneIds.has(m.id);
                                     return (
                                     <div key={m.id} className={`bg-white rounded-2xl shadow-sm border overflow-hidden transition-all ${isDone ? "border-emerald-100" : "border-slate-100"}`}>
-                                        <div
-                                            onClick={() => m.file_url && window.open(m.file_url, "_blank")}
-                                            className="p-5 flex items-center gap-4 hover:bg-slate-50 transition-all cursor-pointer group"
-                                        >
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform ${isDone ? "bg-emerald-100" : "bg-blue-50"}`}>
+                                        <div className="p-5 flex items-center gap-4 hover:bg-slate-50 transition-all group">
+                                            <div
+                                                onClick={() => m.file_url && window.open(m.file_url, "_blank")}
+                                                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 cursor-pointer group-hover:scale-110 transition-transform ${isDone ? "bg-emerald-100" : "bg-blue-50"}`}>
                                                 {isDone
                                                     ? <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                                                     : m.type === "video"
                                                         ? <Video className="w-6 h-6 text-blue-500" />
-                                                        : <FileText className="w-6 h-6 text-blue-500" />}
+                                                        : m.type === "gambar"
+                                                            ? <ImageIcon className="w-6 h-6 text-blue-500" />
+                                                            : m.type === "ppt"
+                                                                ? <Presentation className="w-6 h-6 text-blue-500" />
+                                                                : <FileText className="w-6 h-6 text-blue-500" />}
                                             </div>
-                                            <div className="flex-1 min-w-0">
+                                            <div
+                                                onClick={() => m.file_url && window.open(m.file_url, "_blank")}
+                                                className="flex-1 min-w-0 cursor-pointer"
+                                            >
                                                 <p className="font-bold text-slate-800 truncate">{m.title}</p>
                                                 <p className="text-xs text-slate-400 mt-0.5">{m.description || "Klik untuk buka"}</p>
                                                 <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">{m.type}</span>
                                             </div>
+                                            {isGuru && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        onClick={() => { setEditingMateri(m); setShowUploadMateri(true); }}
+                                                        title="Edit materi"
+                                                        className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                    ><Pencil className="w-4 h-4" /></button>
+                                                    <button
+                                                        onClick={() => setDeleteTarget({ type: "materi", id: m.id, title: m.title })}
+                                                        title="Hapus materi"
+                                                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                    ><Trash2 className="w-4 h-4" /></button>
+                                                </div>
+                                            )}
                                         </div>
                                         {/* Tombol Tandai Selesai — hanya untuk siswa */}
                                         {!isGuru && (
@@ -1162,12 +1243,24 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="shrink-0">
+                                            <div className="shrink-0 flex items-center gap-1">
                                                 {isGuru ? (
-                                                    <button onClick={() => setViewSubmissions(a)}
-                                                        className="text-sm font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all">
-                                                        Lihat Pengumpulan
-                                                    </button>
+                                                    <>
+                                                        <button onClick={() => setViewSubmissions(a)}
+                                                            className="text-sm font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all">
+                                                            Lihat Pengumpulan
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setEditingTugas(a); setShowBuatTugas(true); }}
+                                                            title="Edit tugas"
+                                                            className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                        ><Pencil className="w-4 h-4" /></button>
+                                                        <button
+                                                            onClick={() => setDeleteTarget({ type: "tugas", id: a.id, title: a.title })}
+                                                            title="Hapus tugas"
+                                                            className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                        ><Trash2 className="w-4 h-4" /></button>
+                                                    </>
                                                 ) : a.submission?.score !== null && a.submission?.score !== undefined ? (
                                                     <button onClick={() => setSubmitTugas(a)}
                                                         className="text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl flex items-center gap-1">
@@ -1248,15 +1341,22 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
                         {members.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {members.map((m, idx) => (
-                                    <div key={m.id || idx} className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-slate-100">
+                                    <button
+                                        key={m.id || idx}
+                                        onClick={() => onOpenStudent && onOpenStudent(m.id)}
+                                        className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all text-left w-full"
+                                    >
                                         <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center overflow-hidden shrink-0">
                                             {m.avatar ? <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" /> : <span className="text-xl">👤</span>}
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-800">{m.name}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-slate-800 truncate">{m.name}</p>
                                             <p className="text-xs text-slate-400">Bergabung: {new Date(m.joined_at).toLocaleDateString("id-ID")}</p>
                                         </div>
-                                    </div>
+                                        <span className="text-xs font-bold text-blue-500 shrink-0 flex items-center gap-1">
+                                            Lihat Absensi <ChevronRight className="w-3.5 h-3.5" />
+                                        </span>
+                                    </button>
                                 ))}
                             </div>
                         ) : (
@@ -1271,12 +1371,35 @@ export default function ClassDetail({ classId, onBack, onLogout }) {
             </div>
 
             {/* Modals */}
-            {showUploadMateri && <ModalUploadMateri classId={classId} onClose={() => setShowUploadMateri(false)} onSuccess={fetchAll} />}
-            {showBuatTugas && <ModalBuatTugas classId={classId} onClose={() => setShowBuatTugas(false)} onSuccess={fetchAll} />}
+            {showUploadMateri && (
+                <ModalUploadMateri
+                    classId={classId}
+                    editing={editingMateri}
+                    onClose={() => { setShowUploadMateri(false); setEditingMateri(null); }}
+                    onSuccess={fetchAll}
+                />
+            )}
+            {showBuatTugas && (
+                <ModalBuatTugas
+                    classId={classId}
+                    editing={editingTugas}
+                    onClose={() => { setShowBuatTugas(false); setEditingTugas(null); }}
+                    onSuccess={fetchAll}
+                />
+            )}
             {showBuatKuis && <ModalPilihBuatKuis classId={classId} onClose={() => setShowBuatKuis(false)} onSuccess={() => { setShowBuatKuis(false); fetchAll(); }} />}
             {activeKuis && <QuizPlayer quiz={activeKuis} onClose={() => setActiveKuis(null)} onFinish={() => { setActiveKuis(null); fetchAll(); }} />}
             {submitTugas && <ModalSubmitTugas assignment={submitTugas} onClose={() => setSubmitTugas(null)} onSuccess={fetchAll} />}
             {viewSubmissions && <ModalSubmissions assignment={viewSubmissions} onClose={() => setViewSubmissions(null)} />}
+            {deleteTarget && (
+                <ConfirmDeleteModal
+                    target={deleteTarget}
+                    loading={deleting}
+                    error={deleteError}
+                    onCancel={() => { setDeleteTarget(null); setDeleteError(null); }}
+                    onConfirm={handleConfirmDelete}
+                />
+            )}
 
             {viewLeaderboard && <ModalLeaderboard quiz={viewLeaderboard} currentUserId={user.id} onClose={() => setViewLeaderboard(null)} />}
             <EditProfileModal isOpen={isEditProfileOpen} onClose={() => setIsEditProfileOpen(false)} onUpdateSuccess={(u) => setUser(u)} />

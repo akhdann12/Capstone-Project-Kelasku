@@ -518,24 +518,7 @@ export default function Home({ onNavigate, onLogout }) {
     useEffect(() => {
         const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false); };
         document.addEventListener("mousedown", handler);
-        document.addEventListener("touchstart", handler);
-        return () => {
-            document.removeEventListener("mousedown", handler);
-            document.removeEventListener("touchstart", handler);
-        };
-    }, []);
-
-    // Klik luar tutup menu profile (dipakai klik, bukan hover, biar jalan di HP)
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const profileMenuRef = useRef(null);
-    useEffect(() => {
-        const handler = (e) => { if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setShowProfileMenu(false); };
-        document.addEventListener("mousedown", handler);
-        document.addEventListener("touchstart", handler);
-        return () => {
-            document.removeEventListener("mousedown", handler);
-            document.removeEventListener("touchstart", handler);
-        };
+        return () => document.removeEventListener("mousedown", handler);
     }, []);
 
     const isGuru = user.role === "guru";
@@ -588,22 +571,19 @@ export default function Home({ onNavigate, onLogout }) {
                             </div>
                         )}
                         {/* Profile */}
-                        <div className="relative shrink-0" ref={profileMenuRef}>
-                            <button onClick={() => setShowProfileMenu((v) => !v)}
-                                className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
+                        <div className="relative group shrink-0">
+                            <button className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center overflow-hidden hover:bg-blue-200 transition-colors shadow-sm">
                                 {user.avatar ? <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" /> : "👤"}
                             </button>
-                            {showProfileMenu && (
-                                <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 border border-slate-100 min-w-[200px] z-20">
-                                    <div className="px-4 py-3">
-                                        <span className="block font-black text-slate-800 truncate">{user.name}</span>
-                                        <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
-                                    </div>
-                                    <hr className="my-1 border-slate-50" />
-                                    <button onClick={() => { setIsEditProfileOpen(true); setShowProfileMenu(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
-                                    <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                            <div className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl p-2 hidden group-hover:block border border-slate-100 min-w-[200px] z-20">
+                                <div className="px-4 py-3">
+                                    <span className="block font-black text-slate-800 truncate">{user.name}</span>
+                                    <span className="block text-xs text-slate-400 capitalize font-bold">{user.role}</span>
                                 </div>
-                            )}
+                                <hr className="my-1 border-slate-50" />
+                                <button onClick={() => setIsEditProfileOpen(true)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-lg flex items-center gap-2"><User className="w-4 h-4" />Edit Profil</button>
+                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" />Logout</button>
+                            </div>
                         </div>
                     </div>
                 </div>

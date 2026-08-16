@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const supabase = require("../db");
 const auth = require("../middleware/auth");
+const role = require("../middleware/role");
 const { getNowWIB, toDateStr } = require("../utils/date");
 const { toCsv, sendCsv } = require("../utils/csv");
 
@@ -45,14 +46,13 @@ async function uploadPhoto(file, prefix, userId) {
 
 // Helper: cek apakah streak masih nyambung — true kalau semua hari DI ANTARA
 // lastDateStr dan todayStr (gak termasuk keduanya, mundur dari hari ini)
-// isinya weekend doang. Ini beda sama versi lama yang cuma bandingin
-// "kemarin = 1 hari sekolah sebelum hari ini" — versi lama itu keliru kalau
-// absen terakhirnya kebetulan jatuh pas Sabtu/Minggu (misal absen Sabtu,
-// besoknya Minggu absen lagi — itu seharusnya tetap nyambung).
+// isinya weekend doang. Ini penting biar streak tetep nyambung walau absen
+// terakhirnya kebetulan jatuh pas Sabtu/Minggu (misal absen Sabtu, besoknya
+// Minggu absen lagi — itu seharusnya tetap dianggap nyambung).
 function isStreakContinuous(lastDateStr, todayStr) {
     if (lastDateStr === todayStr) return true;
     const cursor = new Date(todayStr + "T00:00:00Z");
-    for (let i = 0; i < 8; i++) { // batas aman 8 hari mundur, cukup buat 1 long-weekend
+    for (let i = 0; i < 8; i++) { // batas aman 8 hari mundur
         cursor.setUTCDate(cursor.getUTCDate() - 1);
         const cursorStr = cursor.toISOString().split("T")[0];
         if (cursorStr === lastDateStr) return true;
@@ -63,7 +63,7 @@ function isStreakContinuous(lastDateStr, todayStr) {
 }
 
 // Helper: naikkan streak. Ga reset kalau di antara absen terakhir sampai
-// hari ini isinya Sabtu/Minggu doang (lihat isStreakContinuous di atas).
+// hari ini isinya Sabtu/Minggu doang.
 async function bumpStreak(userId) {
     const nowWIB = getNowWIB();
     const todayStr = toDateStr(nowWIB);
@@ -274,6 +274,56 @@ router.get("/export", auth, async (req, res) => {
 
     const fileName = `riwayat-absen-${(profile?.name || "siswa").replace(/\s+/g, "_")}.csv`;
     sendCsv(res, fileName, rows);
+});
+
+// =============================================
+// GET rekap absensi 1 siswa (guru only)
+// Guru cuma bisa liat siswa yang beneran ada di salah satu kelasnya
+// =============================================
+router.get("/student/:studentId", auth, role(["guru"]), async (req, res) => {
+    const { studentId } = req.params;
+    const guruId = req.user.id;
+
+    // Pastiin siswa ini beneran anggota salah satu kelas guru ini (biar guru
+    // gak bisa intip absensi siswa sembarangan yang bukan muridnya)
+    const { data: guruClasses } = await supabase
+        .from("classes").select("id").eq("guru_id", guruId);
+
+    const classIds = (guruClasses || []).map((c) => c.id);
+    if (classIds.length === 0) return res.status(403).json({ message: "Kamu belum punya kelas" });
+
+    const { data: membership } = await supabase
+        .from("class_members")
+        .select("id")
+        .eq("siswa_id", studentId)
+        .in("class_id", classIds)
+        .limit(1)
+        .maybeSingle();
+
+    if (!membership) return res.status(403).json({ message: "Siswa ini bukan muridmu" });
+
+    const { data: profile } = await supabase
+        .from("profiles").select("id, name, avatar, role").eq("id", studentId).maybeSingle();
+
+    if (!profile) return res.status(404).json({ message: "Siswa tidak ditemukan" });
+
+    const { data: streakData } = await supabase
+        .from("user_streaks").select("streak_count, last_login_date").eq("user_id", studentId).maybeSingle();
+
+    const { data: history, error } = await supabase
+        .from("attendances")
+        .select("*")
+        .eq("user_id", studentId)
+        .order("attendance_date", { ascending: false })
+        .limit(90);
+
+    if (error) return res.status(500).json({ message: "Server error" });
+
+    res.json({
+        student: profile,
+        streak: streakData?.streak_count || 0,
+        history: history || [],
+    });
 });
 
 module.exports = router;

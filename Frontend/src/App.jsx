@@ -8,10 +8,12 @@ import Classes from './pages/Classes'
 import ClassDetail from './pages/ClassDetail'
 import ForgotPassword from './pages/ForgotPassword'
 import Attendance from './pages/Attendance'
+import StudentAttendance from './pages/StudentAttendance'
 
 export default function App() {
   const [currentView, setCurrentView] = useState('landing')
   const [selectedClassId, setSelectedClassId] = useState(null)
+  const [selectedStudentId, setSelectedStudentId] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -29,6 +31,11 @@ export default function App() {
     setCurrentView('class-detail')
   }
 
+  const handleOpenStudent = (studentId) => {
+    setSelectedStudentId(studentId)
+    setCurrentView('student-attendance')
+  }
+
   if (currentView === 'landing')         return <LandingPage onNavigate={setCurrentView} />
   if (currentView === 'login')           return <Login onNavigate={setCurrentView} />
   if (currentView === 'register')        return <Register onNavigate={setCurrentView} />
@@ -41,6 +48,13 @@ export default function App() {
       classId={selectedClassId}
       onBack={() => setCurrentView('classes')}
       onLogout={handleLogout}
+      onOpenStudent={handleOpenStudent}
+    />
+  )
+  if (currentView === 'student-attendance') return (
+    <StudentAttendance
+      studentId={selectedStudentId}
+      onBack={() => setCurrentView('class-detail')}
     />
   )
 

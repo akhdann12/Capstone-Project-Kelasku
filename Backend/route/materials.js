@@ -25,6 +25,19 @@ const upload = multer({
     },
 });
 
+// Helper: deteksi tipe materi otomatis dari mimetype file asli.
+// Guru gak perlu milih tipe manual lagi (dulu suka lupa ganti pas ganti file),
+// backend yang nentuin berdasarkan file yang beneran diupload.
+function inferMaterialType(mimetype) {
+    if (!mimetype) return "dokumen";
+    if (mimetype.startsWith("image/")) return "gambar";
+    if (mimetype.startsWith("video/")) return "video";
+    if (mimetype === "application/pdf") return "pdf";
+    if (mimetype === "application/vnd.openxmlformats-officedocument.presentationml.presentation") return "ppt";
+    if (mimetype === "application/msword" || mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "doc";
+    return "dokumen";
+}
+
 // Helper: upload file ke Supabase Storage
 async function uploadToStorage(file) {
     const ext = path.extname(file.originalname);
@@ -116,7 +129,7 @@ router.post("/", auth, role(["guru"]), (req, res) => {
             return res.status(400).json({ message: err.message });
         }
 
-        const { class_id, title, description, type, order } = req.body;
+        const { class_id, title, description, order } = req.body;
         const guru_id = req.user.id;
 
         if (!title) return res.status(400).json({ message: "Judul materi wajib diisi" });
@@ -133,9 +146,11 @@ router.post("/", auth, role(["guru"]), (req, res) => {
         if (!kelas) return res.status(404).json({ message: "Kelas tidak ditemukan atau bukan kelasmu" });
 
         let file_url = null;
+        let type = "dokumen";
         if (req.file) {
             try {
                 file_url = await uploadToStorage(req.file);
+                type = inferMaterialType(req.file.mimetype); // otomatis, bukan dari pilihan guru
             } catch (e) {
                 return res.status(500).json({ message: e.message });
             }
@@ -149,7 +164,7 @@ router.post("/", auth, role(["guru"]), (req, res) => {
                 title,
                 description: description || null,
                 file_url,
-                type: type || "pdf",
+                type,
                 order: order ? parseInt(order) : 0,
             })
             .select()
@@ -181,15 +196,17 @@ router.put("/:id", auth, role(["guru"]), (req, res) => {
         if (!existing) return res.status(404).json({ message: "Materi tidak ditemukan" });
 
         let file_url = existing.file_url;
+        let type = existing.type;
         if (req.file) {
             try {
                 file_url = await uploadToStorage(req.file);
+                type = inferMaterialType(req.file.mimetype); // otomatis ikut file baru
             } catch (e) {
                 return res.status(500).json({ message: e.message });
             }
         }
 
-        const { title, description, type, order } = req.body;
+        const { title, description, order } = req.body;
 
         const { error } = await supabase
             .from("materials")
@@ -197,7 +214,7 @@ router.put("/:id", auth, role(["guru"]), (req, res) => {
                 title: title || existing.title,
                 description: description || existing.description,
                 file_url,
-                type: type || existing.type,
+                type,
                 order: order !== undefined ? parseInt(order) : existing.order,
             })
             .eq("id", req.params.id);

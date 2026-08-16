@@ -88,6 +88,30 @@ router.post("/", auth, role(["guru"]), async (req, res) => {
     res.status(201).json({ message: "Tugas berhasil dibuat", data });
 });
 
+// PUT edit tugas (guru only, harus pemilik)
+router.put("/:id", auth, role(["guru"]), async (req, res) => {
+    const { data: existing } = await supabase
+        .from("assignments").select("*").eq("id", req.params.id).eq("guru_id", req.user.id).single();
+
+    if (!existing) return res.status(404).json({ message: "Tugas tidak ditemukan" });
+
+    const { title, description, deadline, max_score } = req.body;
+    if (!title || !deadline) return res.status(400).json({ message: "Judul dan deadline wajib diisi" });
+
+    const { error } = await supabase
+        .from("assignments")
+        .update({
+            title,
+            description: description ?? existing.description,
+            deadline,
+            max_score: max_score ? parseInt(max_score) : existing.max_score,
+        })
+        .eq("id", req.params.id);
+
+    if (error) return res.status(500).json({ message: "Gagal update tugas" });
+    res.json({ message: "Tugas berhasil diupdate" });
+});
+
 // DELETE tugas (guru only)
 router.delete("/:id", auth, role(["guru"]), async (req, res) => {
     const { data: existing } = await supabase.from("assignments").select("id").eq("id", req.params.id).eq("guru_id", req.user.id).single();

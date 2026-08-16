@@ -1,7 +1,17 @@
 import { useState } from "react";
-import { X, Upload, FileText, Video as VideoIcon, Layers, Hash, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, Upload, FileText, Video as VideoIcon, Image as ImageIcon, Presentation, Hash, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Ikon preview otomatis berdasarkan tipe file yang dipilih —
+// guru gak perlu milih tipe manual lagi, backend yang nentuin dari file aslinya.
+function fileIcon(file) {
+    if (!file) return <Upload className="w-8 h-8" />;
+    if (file.type.startsWith("image/")) return <ImageIcon className="w-8 h-8" />;
+    if (file.type.startsWith("video/")) return <VideoIcon className="w-8 h-8" />;
+    if (file.type.includes("presentation")) return <Presentation className="w-8 h-8" />;
+    return <FileText className="w-8 h-8" />;
+}
 
 export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -137,38 +147,19 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-700 ml-1">Tipe</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                                        <Layers className="w-5 h-5" />
-                                    </div>
-                                    <select
-                                        name="type"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 appearance-none cursor-pointer"
-                                    >
-                                        <option value="pdf">📄 PDF</option>
-                                        <option value="video">🎥 Video</option>
-                                        <option value="doc">📝 Document</option>
-                                    </select>
+                        <div className="space-y-2 max-w-[160px]">
+                            <label className="text-sm font-bold text-slate-700 ml-1">Urutan</label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                    <Hash className="w-5 h-5" />
                                 </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-700 ml-1">Urutan</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                                        <Hash className="w-5 h-5" />
-                                    </div>
-                                    <input
-                                        type="number"
-                                        name="order"
-                                        placeholder="1"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
-                                        defaultValue={1}
-                                    />
-                                </div>
+                                <input
+                                    type="number"
+                                    name="order"
+                                    placeholder="1"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+                                    defaultValue={1}
+                                />
                             </div>
                         </div>
 
@@ -195,7 +186,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
                                 {file ? (
                                     <div className="animate-in fade-in scale-95 duration-300">
                                         <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-4 mx-auto">
-                                            {file.type.includes('video') ? <VideoIcon className="w-8 h-8" /> : <FileText className="w-8 h-8" />}
+                                            {fileIcon(file)}
                                         </div>
                                         <p className="font-bold text-slate-800 text-sm truncate max-w-[200px]">{file.name}</p>
                                         <p className="text-xs text-slate-400 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
