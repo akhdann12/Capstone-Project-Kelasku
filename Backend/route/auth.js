@@ -2,8 +2,36 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const { createClient } = require("@supabase/supabase-js");
 const supabase = require("../db");
 const auth = require("../middleware/auth");
+
+// =============================================
+// PENTING: koneksi Supabase terpisah, KHUSUS buat operasi
+// auth.signInWithPassword() / resetPasswordForEmail().
+//
+// Kenapa perlu terpisah? `supabase` di atas itu koneksi TUNGGAL yang
+// dipakai bareng-bareng oleh SELURUH endpoint di backend (materi, tugas,
+// absen, dll), dan dia dibikin sekali doang pas server nyala, terus
+// dipakai berulang-ulang.
+//
+// Kalau kita panggil supabase.auth.signInWithPassword() pakai koneksi
+// yang sama itu, koneksi itu jadi "keinget" login sebagai user yang
+// baru login. Karena koneksinya dipakai bareng semua request, efeknya
+// abis ada ORANG LOGIN, koneksi utama backend jadi kebatesin cuma bisa
+// akses data user itu doang — bukan lagi punya akses penuh (service
+// role). Ini yang bikin query ke tabel yang RLS-nya aktif (misal
+// attendances) suka balik kosong padahal datanya ada.
+//
+// Solusinya: pakai koneksi baru & terpisah (pakai anon key, bukan
+// service key) khusus buat verifikasi login. Koneksi ini gak dipakai
+// buat query data lain, jadi gak bisa "mencemari" koneksi utama.
+// =============================================
+function createAuthClient() {
+    return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+    });
+}
 
 // Avatar disimpan di memori dulu, lalu upload ke Supabase Storage
 const upload = multer({
@@ -30,12 +58,9 @@ router.post("/register", async (req, res) => {
         return res.status(400).json({ message: "Role tidak valid" });
     }
 
-    // Pakai anon key agar email verifikasi terkirim otomatis
-    const { createClient } = require("@supabase/supabase-js");
-    const supabaseAnon = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_ANON_KEY
-    );
+    // Pakai koneksi terpisah (anon key) juga di sini, biar email verifikasi
+    // terkirim otomatis dan konsisten sama pola di /login
+    const supabaseAnon = createAuthClient();
 
     const { data, error } = await supabaseAnon.auth.signUp({
         email,
@@ -75,7 +100,8 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const authClient = createAuthClient();
+    const { data, error } = await authClient.auth.signInWithPassword({
         email,
         password,
     });
@@ -220,7 +246,8 @@ router.post("/forgot-password", async (req, res) => {
         return res.status(400).json({ message: "Email wajib diisi" });
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const authClient = createAuthClient();
+    const { error } = await authClient.auth.resetPasswordForEmail(email, {
         redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
     });
 
